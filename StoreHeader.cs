@@ -43,10 +43,10 @@ namespace Img2Ffu
         public UInt32 ValidateDescriptorCount = 0;
         public UInt32 ValidateDescriptorLength = 0;
         public UInt32 InitialTableIndex = 0;
-        public UInt32 InitialTableCount = 1;
+        public UInt32 InitialTableCount = 0;
         public UInt32 FlashOnlyTableIndex = 0; // Should be the index of the critical partitions, but for now we don't implement that
-        public UInt32 FlashOnlyTableCount = 1;
+        public UInt32 FlashOnlyTableCount = 0;
         public UInt32 FinalTableIndex; //= WriteDescriptorCount - FinalTableCount;
-        public UInt32 FinalTableCount = 2;
+        public UInt32 FinalTableCount = 0;
     }
 }

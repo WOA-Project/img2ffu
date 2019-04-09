@@ -71,7 +71,6 @@
     <Compile Include="FlashingPayload.cs" />
     <Compile Include="FlashingPayloadGenerator.cs" />
     <Compile Include="FlashPart.cs" />
-    <Compile Include="GetDiskSize.cs" />
     <Compile Include="GPT.cs" />
     <Compile Include="ImageHeader.cs" />
     <Compile Include="ImageSplitter.cs" />
