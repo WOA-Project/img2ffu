@@ -67,7 +67,7 @@ namespace Img2Ffu
             Stream stream;
 
             if (ImageFile.ToLower().Contains(@"\\.\physicaldrive"))
-                stream = new DeviceStream(ImageFile);
+                stream = new DeviceStream(ImageFile, FileAccess.Read);
             else
                 stream = new FileStream(ImageFile, FileMode.Open);
 
