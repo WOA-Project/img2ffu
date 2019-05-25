@@ -57,6 +57,7 @@ namespace Img2Ffu
             bool previouswasexcluded = true;
 
             FlashPart currentFlashPart = null;
+            bool PlatPassed = false;
 
             foreach (GPT.Partition partition in Partitions.OrderBy(x => x.FirstSector))
             {
@@ -103,11 +104,14 @@ namespace Img2Ffu
 
                 if (previouswasexcluded)
                 {
-                    currentFlashPart = new FlashPart(stream, partition.FirstSector * 512);
+                    currentFlashPart = new FlashPart(stream, partition.FirstSector * 512, PlatPassed);
                 }
 
                 previouswasexcluded = false;
                 currentFlashPart.Stream = new PartialStream(stream, (Int64)currentFlashPart.StartLocation, (Int64)(partition.LastSector + 1) * 512);
+
+                if (partition.Name == "PLAT")
+                    PlatPassed = true;
             }
 
             if (!previouswasexcluded)
@@ -134,7 +138,7 @@ namespace Img2Ffu
 
             Logging.Log("");
             Logging.Log("Inserting GPT back into the FFU image");
-            flashParts.Insert(0, new FlashPart(new MemoryStream(GPTBuffer), 0));
+            flashParts.Insert(0, new FlashPart(new MemoryStream(GPTBuffer), 0, false));
 
             return flashParts.ToArray();
         }

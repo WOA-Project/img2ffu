@@ -33,14 +33,16 @@ namespace Img2Ffu
         public UInt32[] TargetLocations;
         public UInt32[] StreamIndexes;
         public Int64[] StreamLocations;
+        public bool BeforePlat;
 
-        public FlashingPayload(UInt32 ChunkCount, byte[][] ChunkHashes, UInt32[] TargetLocations, UInt32[] StreamIndexes, Int64[] StreamLocations)
+        public FlashingPayload(UInt32 ChunkCount, byte[][] ChunkHashes, UInt32[] TargetLocations, UInt32[] StreamIndexes, Int64[] StreamLocations, bool BeforePlat)
         {
             this.ChunkCount = ChunkCount;
             this.ChunkHashes = ChunkHashes;
             this.TargetLocations = TargetLocations;
             this.StreamIndexes = StreamIndexes;
             this.StreamLocations = StreamLocations;
+            this.BeforePlat = BeforePlat;
         }
 
         public UInt32 GetSecurityHeaderSize()
