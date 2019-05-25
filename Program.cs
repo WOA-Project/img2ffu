@@ -134,6 +134,11 @@ namespace Img2Ffu
 
             foreach (FlashingPayload payload in payloads)
             {
+                store.WriteDescriptorLength += payload.GetStoreHeaderSize();
+            }
+
+            foreach (FlashingPayload payload in payloads)
+            {
                 if (!payload.BeforePlat)
                     break;
                 store.FlashOnlyTableIndex += 1;
