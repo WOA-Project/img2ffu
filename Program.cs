@@ -139,7 +139,7 @@ namespace Img2Ffu
 
             foreach (FlashingPayload payload in payloads)
             {
-                if (!payload.BeforePlat)
+                if (payload.TargetLocations.First() * chunkSize > PlatEnd)
                     break;
                 store.FlashOnlyTableIndex += 1;
             }
