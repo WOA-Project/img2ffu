@@ -63,7 +63,7 @@ namespace Img2Ffu
             foreach (GPT.Partition partition in Partitions.OrderBy(x => x.FirstSector))
             {
                 if (partition.Name == "PLAT")
-                    PlatEnd = partition.LastSector * 512;
+                    PlatEnd = partition.LastSector / sectorsInAChunk;
 
                 bool isExcluded = false;
 
@@ -144,7 +144,7 @@ namespace Img2Ffu
             Logging.Log("Inserting GPT back into the FFU image");
             flashParts.Insert(0, new FlashPart(new MemoryStream(GPTBuffer), 0));
 
-            return (flashParts.ToArray(), PlatEnd, Partitions);
+            return (flashParts.OrderBy(x => x.StartLocation).ToArray(), PlatEnd, Partitions);
         }
 
         private readonly static string[] excluded = new string[]

@@ -73,7 +73,7 @@ namespace Img2Ffu
 
             (FlashPart[] flashParts, ulong PlatEnd, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(stream, chunkSize);
 
-            IOrderedEnumerable<FlashingPayload> payloads = FlashingPayloadGenerator.GetOptimizedPayloads(flashParts, chunkSize, PlatEnd).OrderBy(x => x.TargetLocations.Count());
+            IOrderedEnumerable<FlashingPayload> payloads = FlashingPayloadGenerator.GetOptimizedPayloads(flashParts, chunkSize, PlatEnd).OrderBy(x => x.TargetLocations.First());
 
             Logging.Log("");
             Logging.Log("Building image headers...");
@@ -137,7 +137,7 @@ namespace Img2Ffu
 
             foreach (FlashingPayload payload in payloads)
             {
-                if (payload.TargetLocations.First() * chunkSize > PlatEnd)
+                if (payload.TargetLocations.First() > PlatEnd)
                     break;
                 store.FlashOnlyTableIndex += 1;
             }
