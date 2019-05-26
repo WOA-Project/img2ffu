@@ -73,9 +73,9 @@ namespace Img2Ffu
 
             FileStream retstream = new FileStream(FFUFile, FileMode.CreateNew);
 
-            FlashPart[] flashParts = ImageSplitter.GetImageSlices(stream, chunkSize);
+            (FlashPart[] flashParts, ulong PlatEnd) = ImageSplitter.GetImageSlices(stream, chunkSize);
 
-            IOrderedEnumerable<FlashingPayload> payloads = FlashingPayloadGenerator.GetOptimizedPayloads(flashParts, chunkSize).OrderBy(x => x.TargetLocations.Count());
+            IOrderedEnumerable<FlashingPayload> payloads = FlashingPayloadGenerator.GetOptimizedPayloads(flashParts, chunkSize, PlatEnd).OrderBy(x => x.TargetLocations.Count());
 
             Logging.Log("");
             Logging.Log("Building image headers...");

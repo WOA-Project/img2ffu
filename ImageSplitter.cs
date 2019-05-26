@@ -30,7 +30,7 @@ namespace Img2Ffu
 {
     internal class ImageSplitter
     {
-        internal static FlashPart[] GetImageSlices(Stream stream, UInt32 chunkSize)
+        internal static (FlashPart[], ulong) GetImageSlices(Stream stream, UInt32 chunkSize)
         {
             byte[] GPTBuffer = new byte[chunkSize];
             stream.Read(GPTBuffer, 0, (Int32)chunkSize);
@@ -57,7 +57,8 @@ namespace Img2Ffu
             bool previouswasexcluded = true;
 
             FlashPart currentFlashPart = null;
-            bool PlatPassed = false;
+
+            ulong PlatEnd = 0;
 
             foreach (GPT.Partition partition in Partitions.OrderBy(x => x.FirstSector))
             {
@@ -104,14 +105,14 @@ namespace Img2Ffu
 
                 if (previouswasexcluded)
                 {
-                    currentFlashPart = new FlashPart(stream, partition.FirstSector * 512, PlatPassed);
+                    currentFlashPart = new FlashPart(stream, partition.FirstSector * 512);
                 }
 
                 previouswasexcluded = false;
                 currentFlashPart.Stream = new PartialStream(stream, (Int64)currentFlashPart.StartLocation, (Int64)(partition.LastSector + 1) * 512);
 
                 if (partition.Name == "PLAT")
-                    PlatPassed = true;
+                    PlatEnd = partition.LastSector * 512;
             }
 
             if (!previouswasexcluded)
@@ -138,9 +139,9 @@ namespace Img2Ffu
 
             Logging.Log("");
             Logging.Log("Inserting GPT back into the FFU image");
-            flashParts.Insert(0, new FlashPart(new MemoryStream(GPTBuffer), 0, false));
+            flashParts.Insert(0, new FlashPart(new MemoryStream(GPTBuffer), 0));
 
-            return flashParts.ToArray();
+            return (flashParts.ToArray(), PlatEnd);
         }
 
         private readonly static string[] excluded = new string[]

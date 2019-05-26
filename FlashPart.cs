@@ -30,13 +30,11 @@ namespace Img2Ffu
     {
         public Stream Stream;
         public UInt64 StartLocation;
-        public bool AfterPlat;
 
-        public FlashPart(Stream Stream, UInt64 StartLocation, bool AfterPlat)
+        public FlashPart(Stream Stream, UInt64 StartLocation)
         {
             this.Stream = Stream;
             this.StartLocation = StartLocation;
-            this.AfterPlat = AfterPlat;
         }
     }
 }
