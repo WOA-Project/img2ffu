@@ -73,6 +73,24 @@ namespace Img2Ffu
 
             return Manifest;
         }
+
+        internal static List<Partition> GPTPartitionsToPartitions(List<GPT.Partition> partitions)
+        {
+            List<Partition> Parts = new List<Partition>();
+
+            // TODO: implement more
+            foreach (var part in partitions)
+            {
+                Parts.Add(new Partition() { Name = part.Name, TotalSectors = (uint)part.SizeInSectors, UsedSectors = (uint)part.SizeInSectors, RequiredToFlash = true });
+            }
+
+            return Parts;
+        }
+
+        internal static string BuildUpManifest(FullFlash fullFlash, Store store, List<GPT.Partition> partitions)
+        {
+            return BuildUpManifest(fullFlash, store, GPTPartitionsToPartitions(partitions));
+        }
     }
 
     internal class FullFlash

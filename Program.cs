@@ -40,7 +40,7 @@ namespace Img2Ffu
                 Logging.Log("img2ffu - Converts raw image (img) files into full flash update (FFU) files");
                 Logging.Log("Copyright (c) 2019, Gustave Monce - gus33000.me - @gus33000");
                 Logging.Log("Copyright (c) 2018, Rene Lergner - wpinternals.net - @Heathcliff74xda");
-                Logging.Log("Released as MIT license at github.com/gus33000/img2ffu");
+                Logging.Log("Released under the MIT license at github.com/gus33000/img2ffu");
                 Logging.Log("");
 
                 try
@@ -71,9 +71,7 @@ namespace Img2Ffu
             else
                 stream = new FileStream(ImageFile, FileMode.Open);
 
-            FileStream retstream = new FileStream(FFUFile, FileMode.CreateNew);
-
-            (FlashPart[] flashParts, ulong PlatEnd) = ImageSplitter.GetImageSlices(stream, chunkSize);
+            (FlashPart[] flashParts, ulong PlatEnd, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(stream, chunkSize);
 
             IOrderedEnumerable<FlashingPayload> payloads = FlashingPayloadGenerator.GetOptimizedPayloads(flashParts, chunkSize, PlatEnd).OrderBy(x => x.TargetLocations.Count());
 
@@ -99,7 +97,7 @@ namespace Img2Ffu
             simage.MinSectorCount = (UInt32)(stream.Length / 512);
 
             Logging.Log("Generating image manifest...");
-            string manifest = ManifestIni.BuildUpManifest(ffimage, simage, new List<Partition>());
+            string manifest = ManifestIni.BuildUpManifest(ffimage, simage, partitions);
 
             byte[] TextBytes = System.Text.Encoding.ASCII.GetBytes(manifest);
 
@@ -241,6 +239,8 @@ namespace Img2Ffu
             ByteOperations.WriteUInt32(SecurityHeaderBuffer, 0x18, security.CatalogSize);
             ByteOperations.WriteUInt32(SecurityHeaderBuffer, 0x1C, security.HashTableSize);
 
+            FileStream retstream = new FileStream(FFUFile, FileMode.CreateNew);
+
             retstream.Write(SecurityHeaderBuffer, 0, 0x20);
 
             retstream.Write(catalog, 0, (Int32)security.CatalogSize);
@@ -282,7 +282,7 @@ namespace Img2Ffu
                 Stream.Read(buffer, 0, (Int32)chunkSize);
                 retstream.Write(buffer, 0, (Int32)chunkSize);
                 counter++;
-                ShowProgress((UInt64)payloads.Count() * chunkSize, startTime, counter * chunkSize, counter * chunkSize);
+                ShowProgress((UInt64)payloads.Count() * chunkSize, startTime, counter * chunkSize, counter * chunkSize, payload.TargetLocations.First() * chunkSize < PlatEnd);
             }
 
             retstream.Close();
@@ -299,7 +299,7 @@ namespace Img2Ffu
             }
         }
 
-        private static void ShowProgress(ulong totalBytes, DateTime startTime, ulong BytesRead, ulong SourcePosition)
+        private static void ShowProgress(ulong totalBytes, DateTime startTime, ulong BytesRead, ulong SourcePosition, bool DisplayRed)
         {
             var now = DateTime.Now;
             var timeSoFar = now - startTime;
@@ -308,7 +308,7 @@ namespace Img2Ffu
 
             var speed = Math.Round(SourcePosition / 1024L / 1024L / timeSoFar.TotalSeconds);
 
-            Logging.Log(string.Format("{0} {1}MB/s {2:hh\\:mm\\:ss\\.f}", GetDismLikeProgBar(int.Parse((BytesRead * 100 / totalBytes).ToString())), speed.ToString(), remaining, remaining.TotalHours, remaining.Minutes, remaining.Seconds, remaining.Milliseconds), returnline: false);
+            Logging.Log(string.Format("{0} {1}MB/s {2:hh\\:mm\\:ss\\.f}", GetDismLikeProgBar(int.Parse((BytesRead * 100 / totalBytes).ToString())), speed.ToString(), remaining, remaining.TotalHours, remaining.Minutes, remaining.Seconds, remaining.Milliseconds), returnline: false, severity: DisplayRed ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
         }
 
         private static string GetDismLikeProgBar(int perc)

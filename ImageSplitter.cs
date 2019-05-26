@@ -30,7 +30,7 @@ namespace Img2Ffu
 {
     internal class ImageSplitter
     {
-        internal static (FlashPart[], ulong) GetImageSlices(Stream stream, UInt32 chunkSize)
+        internal static (FlashPart[], ulong, List<GPT.Partition> partitions) GetImageSlices(Stream stream, UInt32 chunkSize)
         {
             byte[] GPTBuffer = new byte[chunkSize];
             stream.Read(GPTBuffer, 0, (Int32)chunkSize);
@@ -144,7 +144,7 @@ namespace Img2Ffu
             Logging.Log("Inserting GPT back into the FFU image");
             flashParts.Insert(0, new FlashPart(new MemoryStream(GPTBuffer), 0));
 
-            return (flashParts.ToArray(), PlatEnd);
+            return (flashParts.ToArray(), PlatEnd, Partitions);
         }
 
         private readonly static string[] excluded = new string[]

@@ -38,7 +38,7 @@ namespace Img2Ffu
 
             TimeSpan remaining = TimeSpan.FromMilliseconds(timeSoFar.TotalMilliseconds / CurrentProgress * (TotalProgress - CurrentProgress));
 
-            Logging.Log(string.Format("{0} {1:hh\\:mm\\:ss\\.f}", GetDismLikeProgBar((Int32)(CurrentProgress * 100 / TotalProgress)), remaining, remaining.TotalHours, remaining.Minutes, remaining.Seconds, remaining.Milliseconds), returnline: false, severity: DisplayRed ? Logging.LoggingLevel.Error : Logging.LoggingLevel.Information);
+            Logging.Log(string.Format("{0} {1:hh\\:mm\\:ss\\.f}", GetDismLikeProgBar((Int32)(CurrentProgress * 100 / TotalProgress)), remaining, remaining.TotalHours, remaining.Minutes, remaining.Seconds, remaining.Milliseconds), returnline: false, severity: DisplayRed ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
         }
 
         private static string GetDismLikeProgBar(Int32 perc)
