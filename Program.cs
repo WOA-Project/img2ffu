@@ -45,7 +45,7 @@ namespace Img2Ffu
 
                 try
                 {
-                    GenerateFFU(o.ImgFile, o.FfuFile, o.PlatId, o.ChunkSize, o.Antitheftver, o.Osversion);
+                    GenerateFFU(o.ImgFile, o.FfuFile, o.PlatId, o.ChunkSize, o.Antitheftver, o.Osversion, File.ReadAllLines(o.ExcludedFile), o.BlankSectorBufferSize);
                 }
                 catch (Exception ex)
                 {
@@ -57,7 +57,22 @@ namespace Img2Ffu
             });
         }
 
-        private static void GenerateFFU(string ImageFile, string FFUFile, string PlatformId, UInt32 chunkSize, string AntiTheftVersion, string Osversion)
+        private static byte[] GenerateCatalogFile(byte[] hashData)
+        {
+            byte[] catalog_first_part = new byte[] { 0x30, 0x82, 0x01, 0x44, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x07, 0x02, 0xA0, 0x82, 0x01, 0x35, 0x30, 0x82, 0x01, 0x31, 0x02, 0x01, 0x01, 0x31, 0x00, 0x30, 0x82, 0x01, 0x26, 0x06, 0x09, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x0A, 0x01, 0xA0, 0x82, 0x01, 0x17, 0x30, 0x82, 0x01, 0x13, 0x30, 0x0C, 0x06, 0x0A, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x0C, 0x01, 0x01, 0x04, 0x10, 0xA8, 0xCA, 0xD9, 0x7D, 0xBF, 0x6D, 0x67, 0x4D, 0xB1, 0x4D, 0x62, 0xFB, 0xE6, 0x26, 0x22, 0xD4, 0x17, 0x0D, 0x32, 0x30, 0x30, 0x31, 0x31, 0x30, 0x31, 0x32, 0x31, 0x32, 0x32, 0x37, 0x5A, 0x30, 0x0E, 0x06, 0x0A, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x0C, 0x01, 0x02, 0x05, 0x00, 0x30, 0x81, 0xD1, 0x30, 0x81, 0xCE, 0x04, 0x1E, 0x48, 0x00, 0x61, 0x00, 0x73, 0x00, 0x68, 0x00, 0x54, 0x00, 0x61, 0x00, 0x62, 0x00, 0x6C, 0x00, 0x65, 0x00, 0x2E, 0x00, 0x62, 0x00, 0x6C, 0x00, 0x6F, 0x00, 0x62, 0x00, 0x00, 0x00, 0x31, 0x81, 0xAB, 0x30, 0x45, 0x06, 0x0A, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x02, 0x01, 0x04, 0x31, 0x37, 0x30, 0x35, 0x30, 0x10, 0x06, 0x0A, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x02, 0x01, 0x19, 0xA2, 0x02, 0x80, 0x00, 0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2B, 0x0E, 0x03, 0x02, 0x1A, 0x05, 0x00, 0x04, 0x14 };
+            byte[] catalog_second_part = new byte[] { 0x30, 0x62, 0x06, 0x0A, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x0C, 0x02, 0x02, 0x31, 0x54, 0x30, 0x52, 0x1E, 0x4C, 0x00, 0x7B, 0x00, 0x44, 0x00, 0x45, 0x00, 0x33, 0x00, 0x35, 0x00, 0x31, 0x00, 0x41, 0x00, 0x34, 0x00, 0x32, 0x00, 0x2D, 0x00, 0x38, 0x00, 0x45, 0x00, 0x35, 0x00, 0x39, 0x00, 0x2D, 0x00, 0x31, 0x00, 0x31, 0x00, 0x44, 0x00, 0x30, 0x00, 0x2D, 0x00, 0x38, 0x00, 0x43, 0x00, 0x34, 0x00, 0x37, 0x00, 0x2D, 0x00, 0x30, 0x00, 0x30, 0x00, 0x43, 0x00, 0x30, 0x00, 0x34, 0x00, 0x46, 0x00, 0x43, 0x00, 0x32, 0x00, 0x39, 0x00, 0x35, 0x00, 0x45, 0x00, 0x45, 0x00, 0x7D, 0x02, 0x02, 0x02, 0x00, 0x31, 0x00 };
+
+            byte[] hash = new SHA1Managed().ComputeHash(hashData);
+
+            byte[] catalog = new byte[catalog_first_part.Length + hash.Length + catalog_second_part.Length];
+            Buffer.BlockCopy(catalog_first_part, 0, catalog, 0, catalog_first_part.Length);
+            Buffer.BlockCopy(hash, 0, catalog, catalog_first_part.Length, hash.Length);
+            Buffer.BlockCopy(catalog_second_part, 0, catalog, catalog_first_part.Length + hash.Length, catalog_second_part.Length);
+
+            return catalog;
+        }
+
+        private static void GenerateFFU(string ImageFile, string FFUFile, string PlatformId, UInt32 chunkSize, string AntiTheftVersion, string Osversion, string[] excluded, UInt32 BlankSectorBufferSize)
         {
             Logging.Log("Input image: " + ImageFile);
             Logging.Log("Destination image: " + FFUFile);
@@ -71,9 +86,9 @@ namespace Img2Ffu
             else
                 stream = new FileStream(ImageFile, FileMode.Open);
 
-            (FlashPart[] flashParts, ulong PlatEnd, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(stream, chunkSize);
+            (FlashPart[] flashParts, ulong PlatEnd, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(stream, chunkSize, excluded);
 
-            IOrderedEnumerable<FlashingPayload> payloads = FlashingPayloadGenerator.GetOptimizedPayloads(flashParts, chunkSize, PlatEnd).OrderBy(x => x.TargetLocations.First());
+            IOrderedEnumerable<FlashingPayload> payloads = FlashingPayloadGenerator.GetOptimizedPayloads(flashParts, chunkSize, BlankSectorBufferSize).OrderBy(x => x.TargetLocations.First()); // , PlatEnd
 
             Logging.Log("");
             Logging.Log("Building image headers...");
@@ -323,7 +338,7 @@ namespace Img2Ffu
             return "[" + bases + "]";
         }
 
-        private static byte[] GenerateCatalogFile(byte[] hashData)
+        /*private static byte[] GenerateCatalogFile(byte[] hashData)
         {
             string catalog = Path.GetTempFileName();
             string cdf = Path.GetTempFileName();
@@ -361,7 +376,46 @@ namespace Img2Ffu
             File.Delete(cdf);
 
             return catalogBuffer;
-        }
+        }*/
+
+        private readonly static string[] excluded = new string[]
+        {
+            "DPP",
+            "MODEM_FSG",
+            "MODEM_FS1",
+            "MODEM_FS2",
+            "MODEM_FSC",
+            "DDR",
+            "SEC",
+            "APDP",
+            "MSADP",
+            "DPO",
+            "SSD",
+            "DBI",
+            "UEFI_BS_NV",
+            "UEFI_NV",
+            "UEFI_RT_NV",
+            "UEFI_RT_NV_RPMB",
+            "BOOTMODE",
+            "LIMITS",
+            "BACKUP_BS_NV",
+            "BACKUP_SBL1",
+            "BACKUP_SBL2",
+            "BACKUP_SBL3",
+            "BACKUP_PMIC",
+            "BACKUP_DBI",
+            "BACKUP_UEFI",
+            "BACKUP_RPM",
+            "BACKUP_QSEE",
+            "BACKUP_QHEE",
+            "BACKUP_TZ",
+            "BACKUP_HYP",
+            "BACKUP_WINSECAPP",
+            "BACKUP_TZAPPS",
+            "SVRawDump",
+            "IS_UNLOCKED",
+            "HACK"
+        };
 
         internal class Options
         {
@@ -370,6 +424,9 @@ namespace Img2Ffu
 
             [Option('f', "ffu-file", HelpText = "A path to the FFU file to output", Required = true)]
             public string FfuFile { get; set; }
+
+            [Option('e', "excluded-file", HelpText = "A path to the file with all partitions to exclude", Required = false, Default = ".\\provisioning-partitions.txt")]
+            public string ExcludedFile { get; set; }
 
             [Option('p', "plat-id", HelpText = "Platform ID to use", Required = true)]
             public string PlatId { get; set; }
@@ -382,6 +439,9 @@ namespace Img2Ffu
 
             [Option('c', "chunk-size", Required = false, HelpText = "Chunk size to use for the FFU file", Default = 131072u)]
             public UInt32 ChunkSize { get; set; }
+
+            [Option('b', "blanksectorbuffer-size", Required = false, HelpText = "Buffer size for the upper maximum allowed limit of blank sectors", Default = 15u)]
+            public UInt32 BlankSectorBufferSize { get; set; }
         }
     }
 }

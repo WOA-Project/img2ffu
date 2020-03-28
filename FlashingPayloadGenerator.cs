@@ -53,7 +53,7 @@ namespace Img2Ffu
             return "[" + bases + "]";
         }
 
-        internal static FlashingPayload[] GetOptimizedPayloads(FlashPart[] flashParts, UInt32 chunkSize, ulong PlatEnd)
+        internal static FlashingPayload[] GetOptimizedPayloads(FlashPart[] flashParts, UInt32 chunkSize, UInt32 BlankSectorBufferSize)//, ulong PlatEnd)
         {
             List<FlashingPayload> flashingPayloads = new List<FlashingPayload>();
 
@@ -70,6 +70,11 @@ namespace Img2Ffu
             Int64 CurrentProcess1 = 0;
             DateTime startTime = DateTime.Now;
             Logging.Log("Hashing resources...");
+
+            ulong maxblank = BlankSectorBufferSize;
+            bool blankphase = false;
+            ulong blankcount = 0;
+            List<FlashingPayload> blankbuffer = new List<FlashingPayload>();
 
             using (SHA256 crypto = SHA256.Create())
             {
@@ -89,8 +94,31 @@ namespace Img2Ffu
 
                         byte[] emptyness = new byte[] { 0xFA, 0x43, 0x23, 0x9B, 0xCE, 0xE7, 0xB9, 0x7C, 0xA6, 0x2F, 0x00, 0x7C, 0xC6, 0x84, 0x87, 0x56, 0x0A, 0x39, 0xE1, 0x9F, 0x74, 0xF3, 0xDD, 0xE7, 0x48, 0x6D, 0xB3, 0xF9, 0x8D, 0xF8, 0xE4, 0x71 };
 
-                        if ((((UInt32)flashPart.StartLocation / chunkSize) + i) < PlatEnd || !ByteOperations.Compare(emptyness, hash))
+                        //if ((((UInt32)flashPart.StartLocation / chunkSize) + i) < PlatEnd || !ByteOperations.Compare(emptyness, hash))
+                        //    flashingPayloads.Add(new FlashingPayload(1, new byte[][] { hash }, new UInt32[] { ((UInt32)flashPart.StartLocation / chunkSize) + i }, new UInt32[] { j }, new Int64[] { position }));
+                        
+                        if (!ByteOperations.Compare(emptyness, hash))
+                        {
                             flashingPayloads.Add(new FlashingPayload(1, new byte[][] { hash }, new UInt32[] { ((UInt32)flashPart.StartLocation / chunkSize) + i }, new UInt32[] { j }, new Int64[] { position }));
+                            
+                            if (blankphase && blankcount < maxblank)
+                            {
+                                foreach (var blankpay in blankbuffer)
+                                {
+                                    flashingPayloads.Add(blankpay);
+                                }
+                            }
+
+                            blankphase = false;
+                            blankcount = 0;
+                            blankbuffer = new List<FlashingPayload>();
+                        }
+                        else if (blankcount < maxblank)
+                        {
+                            blankphase = true;
+                            blankcount++;
+                            blankbuffer.Add(new FlashingPayload(1, new byte[][] { hash }, new UInt32[] { ((UInt32)flashPart.StartLocation / chunkSize) + i }, new UInt32[] { j }, new Int64[] { position }));
+                        }
 
                         /*if (flashingPayloads.Any(x => ByteOperations.Compare(x.ChunkHashes.First(), hash)))
                         {
@@ -105,7 +133,7 @@ namespace Img2Ffu
                         }*/
 
                         CurrentProcess1++;
-                        ShowProgress(CurrentProcess1, TotalProcess1, startTime, (((UInt32)flashPart.StartLocation / chunkSize) + i) < PlatEnd);
+                        ShowProgress(CurrentProcess1, TotalProcess1, startTime, blankphase);//(((UInt32)flashPart.StartLocation / chunkSize) + i) < PlatEnd);
                     }
                 }
             }

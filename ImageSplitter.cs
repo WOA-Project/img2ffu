@@ -30,7 +30,7 @@ namespace Img2Ffu
 {
     internal class ImageSplitter
     {
-        internal static (FlashPart[], ulong, List<GPT.Partition> partitions) GetImageSlices(Stream stream, UInt32 chunkSize)
+        internal static (FlashPart[], ulong, List<GPT.Partition> partitions) GetImageSlices(Stream stream, UInt32 chunkSize, string[] excluded)
         {
             byte[] GPTBuffer = new byte[chunkSize];
             stream.Read(GPTBuffer, 0, (Int32)chunkSize);
@@ -146,44 +146,5 @@ namespace Img2Ffu
 
             return (flashParts.OrderBy(x => x.StartLocation).ToArray(), PlatEnd, Partitions);
         }
-
-        private readonly static string[] excluded = new string[]
-        {
-            "DPP",
-            "MODEM_FSG",
-            "MODEM_FS1",
-            "MODEM_FS2",
-            "MODEM_FSC",
-            "DDR",
-            "SEC",
-            "APDP",
-            "MSADP",
-            "DPO",
-            "SSD",
-            "DBI",
-            "UEFI_BS_NV",
-            "UEFI_NV",
-            "UEFI_RT_NV",
-            "UEFI_RT_NV_RPMB",
-            "BOOTMODE",
-            "LIMITS",
-            "BACKUP_BS_NV",
-            "BACKUP_SBL1",
-            "BACKUP_SBL2",
-            "BACKUP_SBL3",
-            "BACKUP_PMIC",
-            "BACKUP_DBI",
-            "BACKUP_UEFI",
-            "BACKUP_RPM",
-            "BACKUP_QSEE",
-            "BACKUP_QHEE",
-            "BACKUP_TZ",
-            "BACKUP_HYP",
-            "BACKUP_WINSECAPP",
-            "BACKUP_TZAPPS",
-            "SVRawDump",
-            "IS_UNLOCKED",
-            "HACK"
-        };
     }
 }
