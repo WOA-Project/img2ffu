@@ -22,11 +22,12 @@ SOFTWARE.
 
 */
 using CommandLine;
+using DiscUtils;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 
 namespace Img2Ffu
@@ -38,14 +39,30 @@ namespace Img2Ffu
             Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
             {
                 Logging.Log("img2ffu - Converts raw image (img) files into full flash update (FFU) files");
-                Logging.Log("Copyright (c) 2019, Gustave Monce - gus33000.me - @gus33000");
+                Logging.Log("Copyright (c) 2019-2021, Gustave Monce - gus33000.me - @gus33000");
                 Logging.Log("Copyright (c) 2018, Rene Lergner - wpinternals.net - @Heathcliff74xda");
                 Logging.Log("Released under the MIT license at github.com/gus33000/img2ffu");
                 Logging.Log("");
 
                 try
                 {
-                    GenerateFFU(o.ImgFile, o.FfuFile, o.PlatId, o.ChunkSize, o.Antitheftver, o.Osversion, File.ReadAllLines(o.ExcludedFile), o.BlankSectorBufferSize);
+                    string filepath = o.ExcludedFile;
+
+                    if (!File.Exists(filepath))
+                    {
+                        filepath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), o.ExcludedFile);
+                    }
+
+                    if (!File.Exists(filepath))
+                    {
+                        Logging.Log("Something happened.", Logging.LoggingLevel.Error);
+                        Logging.Log("We couldn't find the provisioning partition file.", Logging.LoggingLevel.Error);
+                        Logging.Log("Please specify one using the corresponding argument switch", Logging.LoggingLevel.Error);
+                        Environment.Exit(1);
+                        return;
+                    }
+
+                    GenerateFFU(o.ImgFile, o.FfuFile, o.PlatId, o.ChunkSize, o.Antitheftver, o.Osversion, File.ReadAllLines(filepath), o.BlankSectorBufferSize);
                 }
                 catch (Exception ex)
                 {
@@ -72,6 +89,35 @@ namespace Img2Ffu
             return catalog;
         }
 
+        private static byte[] GetResultingBuffer(IEnumerable<FlashingPayload> payloads)
+        {
+            UInt32 WriteDescriptorLength = 0;
+            foreach (FlashingPayload payload in payloads)
+            {
+                WriteDescriptorLength += payload.GetStoreHeaderSize();
+            }
+
+            byte[] descriptorsBuffer = new byte[WriteDescriptorLength];
+
+            UInt32 NewWriteDescriptorOffset = 0;
+            foreach (FlashingPayload payload in payloads)
+            {
+                var descriptor = payload.GetFlashingPayloadDescriptor();
+
+                ByteOperations.WriteUInt32(descriptorsBuffer, NewWriteDescriptorOffset + 0x00, descriptor.LocationCount); // Location count
+                ByteOperations.WriteUInt32(descriptorsBuffer, NewWriteDescriptorOffset + 0x04, descriptor.ChunkCount);    // Chunk count
+                NewWriteDescriptorOffset += 0x08;
+
+                foreach (var dataDescriptor in descriptor.flashingPayloadDataDescriptors)
+                {
+                    ByteOperations.WriteUInt32(descriptorsBuffer, NewWriteDescriptorOffset + 0x00, dataDescriptor.DiskAccessMethod); // Disk access method (0 = Begin, 2 = End)
+                    ByteOperations.WriteUInt32(descriptorsBuffer, NewWriteDescriptorOffset + 0x04, dataDescriptor.ChunkIndex);       // Chunk index
+                    NewWriteDescriptorOffset += 0x08;
+                }
+            }
+            return descriptorsBuffer;
+        }
+
         private static void GenerateFFU(string ImageFile, string FFUFile, string PlatformId, UInt32 chunkSize, string AntiTheftVersion, string Osversion, string[] excluded, UInt32 BlankSectorBufferSize)
         {
             Logging.Log("Input image: " + ImageFile);
@@ -80,15 +126,39 @@ namespace Img2Ffu
             Logging.Log("");
 
             Stream stream;
+            VirtualDisk destDisk = null;
 
             if (ImageFile.ToLower().Contains(@"\\.\physicaldrive"))
+            {
                 stream = new DeviceStream(ImageFile, FileAccess.Read);
-            else
+            }
+            else if (File.Exists(ImageFile) && Path.GetExtension(ImageFile).ToLowerInvariant() == ".vhd")
+            {
+                DiscUtils.Setup.SetupHelper.RegisterAssembly(typeof(DiscUtils.Vhd.Disk).Assembly);
+                DiscUtils.Setup.SetupHelper.RegisterAssembly(typeof(DiscUtils.Vhdx.Disk).Assembly);
+                destDisk = VirtualDisk.OpenDisk(ImageFile, FileAccess.Read);
+                stream = destDisk.Content;
+            }
+            else if (File.Exists(ImageFile) && Path.GetExtension(ImageFile).ToLowerInvariant() == ".vhdx")
+            {
+                DiscUtils.Setup.SetupHelper.RegisterAssembly(typeof(DiscUtils.Vhd.Disk).Assembly);
+                DiscUtils.Setup.SetupHelper.RegisterAssembly(typeof(DiscUtils.Vhdx.Disk).Assembly);
+                destDisk = VirtualDisk.OpenDisk(ImageFile, FileAccess.Read);
+                stream = destDisk.Content;
+            }
+            else if (File.Exists(ImageFile))
+            {
                 stream = new FileStream(ImageFile, FileMode.Open);
+            }
+            else
+            {
+                Logging.Log("Unknown input specified");
+                return;
+            }
 
             (FlashPart[] flashParts, ulong PlatEnd, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(stream, chunkSize, excluded);
 
-            IOrderedEnumerable<FlashingPayload> payloads = FlashingPayloadGenerator.GetOptimizedPayloads(flashParts, chunkSize, BlankSectorBufferSize).OrderBy(x => x.TargetLocations.First()); // , PlatEnd
+            IOrderedEnumerable<FlashingPayload> payloads = FlashingPayloadGenerator.GetOptimizedPayloads(flashParts, chunkSize, BlankSectorBufferSize).OrderBy(x => x.TargetLocations.First());
 
             Logging.Log("");
             Logging.Log("Building image headers...");
@@ -145,10 +215,8 @@ namespace Img2Ffu
             store.FinalTableIndex = (UInt32)payloads.Count() - store.FinalTableCount;
             store.PlatformId = PlatformId;
 
-            foreach (FlashingPayload payload in payloads)
-            {
-                store.WriteDescriptorLength += payload.GetStoreHeaderSize();
-            }
+            byte[] WriteDescriptorBuffer = GetResultingBuffer(payloads);
+            store.WriteDescriptorLength = (UInt32)WriteDescriptorBuffer.Length;
 
             foreach (FlashingPayload payload in payloads)
             {
@@ -157,44 +225,8 @@ namespace Img2Ffu
                 store.FlashOnlyTableIndex += 1;
             }
 
-            byte[] StoreHeaderBuffer = new byte[0xF8];
-            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0, store.UpdateType);
-            ByteOperations.WriteUInt16(StoreHeaderBuffer, 0x04, store.MajorVersion);
-            ByteOperations.WriteUInt16(StoreHeaderBuffer, 0x06, store.MinorVersion);
-            ByteOperations.WriteUInt16(StoreHeaderBuffer, 0x08, store.FullFlashMajorVersion);
-            ByteOperations.WriteUInt16(StoreHeaderBuffer, 0x0A, store.FullFlashMinorVersion);
-            ByteOperations.WriteAsciiString(StoreHeaderBuffer, 0x0C, store.PlatformId);
-            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xCC, store.BlockSizeInBytes);
-            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xD0, store.WriteDescriptorCount);
-            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xD4, store.WriteDescriptorLength);
-            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xD8, store.ValidateDescriptorCount);
-            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xDC, store.ValidateDescriptorLength);
-            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xE0, store.InitialTableIndex);
-            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xE4, store.InitialTableCount);
-            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xE8, store.FlashOnlyTableIndex);
-            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xEC, store.FlashOnlyTableCount);
-            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xF0, store.FinalTableIndex);
-            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xF4, store.FinalTableCount);
-            Headerstream2.Write(StoreHeaderBuffer, 0, 0xF8);
-
-            byte[] descriptorsBuffer = new byte[store.WriteDescriptorLength];
-
-            UInt32 NewWriteDescriptorOffset = 0;
-            foreach (FlashingPayload payload in payloads)
-            {
-                ByteOperations.WriteUInt32(descriptorsBuffer, NewWriteDescriptorOffset + 0x00, (UInt32)payload.TargetLocations.Count()); // Location count
-                ByteOperations.WriteUInt32(descriptorsBuffer, NewWriteDescriptorOffset + 0x04, payload.ChunkCount);                      // Chunk count
-                NewWriteDescriptorOffset += 0x08;
-
-                foreach (UInt32 location in payload.TargetLocations)
-                {
-                    ByteOperations.WriteUInt32(descriptorsBuffer, NewWriteDescriptorOffset + 0x00, 0x00000000);                          // Disk access method (0 = Begin, 2 = End)
-                    ByteOperations.WriteUInt32(descriptorsBuffer, NewWriteDescriptorOffset + 0x04, location);                            // Chunk index
-                    NewWriteDescriptorOffset += 0x08;
-                }
-            }
-
-            Headerstream2.Write(descriptorsBuffer, 0, (Int32)store.WriteDescriptorLength);
+            Headerstream2.Write(store.GetResultingBuffer(), 0, 0xF8);
+            Headerstream2.Write(WriteDescriptorBuffer, 0, (Int32)store.WriteDescriptorLength);
 
             RoundUpToChunks(Headerstream2, chunkSize);
 
@@ -235,7 +267,10 @@ namespace Img2Ffu
 
             foreach (FlashingPayload payload in payloads)
             {
-                bw.Write(payload.ChunkHashes[0], 0, payload.ChunkHashes[0].Length);
+                foreach (var chunkHash in payload.ChunkHashes)
+                {
+                    bw.Write(chunkHash, 0, chunkHash.Length);
+                }
             }
 
             bw.Close();
@@ -289,18 +324,25 @@ namespace Img2Ffu
 
             foreach (FlashingPayload payload in payloads)
             {
-                UInt32 StreamIndex = payload.StreamIndexes.First();
-                FlashPart flashPart = flashParts[StreamIndex];
-                Stream Stream = flashPart.Stream;
-                Stream.Seek(payload.StreamLocations.First(), SeekOrigin.Begin);
-                byte[] buffer = new byte[chunkSize];
-                Stream.Read(buffer, 0, (Int32)chunkSize);
-                retstream.Write(buffer, 0, (Int32)chunkSize);
-                counter++;
-                ShowProgress((UInt64)payloads.Count() * chunkSize, startTime, counter * chunkSize, counter * chunkSize, payload.TargetLocations.First() * chunkSize < PlatEnd);
+                for (int i = 0; i < payload.StreamIndexes.Length; i++)
+                {
+                    UInt32 StreamIndex = payload.StreamIndexes[i];
+                    FlashPart flashPart = flashParts[StreamIndex];
+                    Stream Stream = flashPart.Stream;
+                    Stream.Seek(payload.StreamLocations[i], SeekOrigin.Begin);
+
+                    byte[] buffer = new byte[chunkSize];
+                    Stream.Read(buffer, 0, (Int32)chunkSize);
+                    retstream.Write(buffer, 0, (Int32)chunkSize);
+                    counter++;
+
+                    ShowProgress((UInt64)payloads.Count() * chunkSize, startTime, counter * chunkSize, counter * chunkSize, payload.TargetLocations[i] * chunkSize < PlatEnd);
+                }
             }
 
             retstream.Close();
+            if (destDisk != null)
+                destDisk.Dispose();
             Logging.Log("");
         }
 
@@ -338,85 +380,6 @@ namespace Img2Ffu
             return "[" + bases + "]";
         }
 
-        /*private static byte[] GenerateCatalogFile(byte[] hashData)
-        {
-            string catalog = Path.GetTempFileName();
-            string cdf = Path.GetTempFileName();
-            string hashTableBlob = Path.GetTempFileName();
-
-            File.WriteAllBytes(hashTableBlob, hashData);
-
-            using (StreamWriter streamWriter = new StreamWriter(cdf))
-            {
-                streamWriter.WriteLine("[CatalogHeader]");
-                streamWriter.WriteLine("Name={0}", catalog);
-                streamWriter.WriteLine("[CatalogFiles]");
-                streamWriter.WriteLine("{0}={1}", "HashTable.blob", hashTableBlob);
-            }
-
-            using (Process process = new Process())
-            {
-                process.StartInfo.FileName = "MakeCat.exe";
-                process.StartInfo.Arguments = string.Format("\"{0}\"", cdf);
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.CreateNoWindow = true;
-                process.StartInfo.RedirectStandardOutput = true;
-
-                process.Start();
-                process.WaitForExit();
-
-                if (process.ExitCode != 0)
-                    throw new Exception();
-            }
-
-            byte[] catalogBuffer = File.ReadAllBytes(catalog);
-
-            File.Delete(catalog);
-            File.Delete(hashTableBlob);
-            File.Delete(cdf);
-
-            return catalogBuffer;
-        }*/
-
-        private readonly static string[] excluded = new string[]
-        {
-            "DPP",
-            "MODEM_FSG",
-            "MODEM_FS1",
-            "MODEM_FS2",
-            "MODEM_FSC",
-            "DDR",
-            "SEC",
-            "APDP",
-            "MSADP",
-            "DPO",
-            "SSD",
-            "DBI",
-            "UEFI_BS_NV",
-            "UEFI_NV",
-            "UEFI_RT_NV",
-            "UEFI_RT_NV_RPMB",
-            "BOOTMODE",
-            "LIMITS",
-            "BACKUP_BS_NV",
-            "BACKUP_SBL1",
-            "BACKUP_SBL2",
-            "BACKUP_SBL3",
-            "BACKUP_PMIC",
-            "BACKUP_DBI",
-            "BACKUP_UEFI",
-            "BACKUP_RPM",
-            "BACKUP_QSEE",
-            "BACKUP_QHEE",
-            "BACKUP_TZ",
-            "BACKUP_HYP",
-            "BACKUP_WINSECAPP",
-            "BACKUP_TZAPPS",
-            "SVRawDump",
-            "IS_UNLOCKED",
-            "HACK"
-        };
-
         internal class Options
         {
             [Option('i', "img-file", HelpText = @"A path to the img file to convert *OR* a PhysicalDisk path. i.e. \\.\PhysicalDrive1", Required = true)]
@@ -440,7 +403,7 @@ namespace Img2Ffu
             [Option('c', "chunk-size", Required = false, HelpText = "Chunk size to use for the FFU file", Default = 131072u)]
             public UInt32 ChunkSize { get; set; }
 
-            [Option('b', "blanksectorbuffer-size", Required = false, HelpText = "Buffer size for the upper maximum allowed limit of blank sectors", Default = 15u)]
+            [Option('b', "blanksectorbuffer-size", Required = false, HelpText = "Buffer size for the upper maximum allowed limit of blank sectors", Default = 100u)]
             public UInt32 BlankSectorBufferSize { get; set; }
         }
     }

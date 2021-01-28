@@ -52,5 +52,19 @@ namespace Img2Ffu
         {
             return 0x08 * ((UInt32)TargetLocations.Count() + 1);
         }
+
+        public FlashingPayloadDescriptor GetFlashingPayloadDescriptor()
+        {
+            return new FlashingPayloadDescriptor()
+            {
+                LocationCount = (UInt32)TargetLocations.Count(),
+                ChunkCount = ChunkCount,
+                flashingPayloadDataDescriptors = TargetLocations.Select(x => new FlashingPayloadDataDescriptor()
+                {
+                    DiskAccessMethod = 0x00000000,
+                    ChunkIndex = x
+                }).ToArray()
+            };
+        }
     }
 }

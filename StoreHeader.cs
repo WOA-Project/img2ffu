@@ -48,5 +48,28 @@ namespace Img2Ffu
         public UInt32 FlashOnlyTableCount = 1;
         public UInt32 FinalTableIndex; //= WriteDescriptorCount - FinalTableCount;
         public UInt32 FinalTableCount = 0;
+
+        public byte[] GetResultingBuffer()
+        {
+            byte[] StoreHeaderBuffer = new byte[0xF8];
+            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0, UpdateType);
+            ByteOperations.WriteUInt16(StoreHeaderBuffer, 0x04, MajorVersion);
+            ByteOperations.WriteUInt16(StoreHeaderBuffer, 0x06, MinorVersion);
+            ByteOperations.WriteUInt16(StoreHeaderBuffer, 0x08, FullFlashMajorVersion);
+            ByteOperations.WriteUInt16(StoreHeaderBuffer, 0x0A, FullFlashMinorVersion);
+            ByteOperations.WriteAsciiString(StoreHeaderBuffer, 0x0C, PlatformId);
+            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xCC, BlockSizeInBytes);
+            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xD0, WriteDescriptorCount);
+            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xD4, WriteDescriptorLength);
+            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xD8, ValidateDescriptorCount);
+            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xDC, ValidateDescriptorLength);
+            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xE0, InitialTableIndex);
+            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xE4, InitialTableCount);
+            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xE8, FlashOnlyTableIndex);
+            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xEC, FlashOnlyTableCount);
+            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xF0, FinalTableIndex);
+            ByteOperations.WriteUInt32(StoreHeaderBuffer, 0xF4, FinalTableCount);
+            return StoreHeaderBuffer;
+        }
     }
 }
