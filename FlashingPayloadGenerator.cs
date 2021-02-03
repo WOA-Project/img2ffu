@@ -76,7 +76,7 @@ namespace Img2Ffu
             ulong blankcount = 0;
             List<FlashingPayload> blankbuffer = new List<FlashingPayload>();
 
-            using (SHA256Cng crypto = new SHA256Cng())
+            using (SHA256 crypto = SHA256.Create())
             {
                 for (UInt32 j = 0; j < flashParts.Count(); j++)
                 {
