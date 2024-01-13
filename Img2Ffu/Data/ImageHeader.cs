@@ -22,6 +22,7 @@ SOFTWARE.
 
 */
 using System.IO;
+using System.Text;
 
 namespace Img2Ffu.Data
 {
@@ -35,7 +36,7 @@ namespace Img2Ffu.Data
             using BinaryWriter binaryWriter = new(ImageHeaderStream);
 
             binaryWriter.Write(HasDeviceTargetInfo ? 28u : 24u); // Size
-            binaryWriter.Write("ImageFlash  "); // Signature
+            binaryWriter.Write(Encoding.ASCII.GetBytes("ImageFlash  ")); // Signature
             binaryWriter.Write(ManifestLength); // Manifest Length
             binaryWriter.Write(ChunkSize / 0x400); // Chunk Size in KB
 

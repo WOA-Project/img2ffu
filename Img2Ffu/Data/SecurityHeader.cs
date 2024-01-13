@@ -22,6 +22,7 @@ SOFTWARE.
 
 */
 using System.IO;
+using System.Text;
 
 namespace Img2Ffu.Data
 {
@@ -43,7 +44,7 @@ namespace Img2Ffu.Data
             ChunkSizeInKb = ChunkSize / 0x400;
 
             binaryWriter.Write(Size);
-            binaryWriter.Write(Signature);
+            binaryWriter.Write(Encoding.ASCII.GetBytes(Signature));
             binaryWriter.Write(ChunkSizeInKb);
             binaryWriter.Write(HashAlgorithm);
             binaryWriter.Write(CatalogSize);
