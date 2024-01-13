@@ -21,34 +21,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using System.IO;
-
-namespace Img2Ffu.Data
+namespace Img2Ffu.Manifest
 {
-    internal class ImageHeader
+    internal class StoreManifest
     {
-        public uint Size = 24;
-        public string Signature = "ImageFlash  ";
-        public uint ManifestLength;
-        public uint ChunkSize = 128;
-
-        public byte[] GetResultingBuffer(uint ChunkSize)
-        {
-            this.ChunkSize = ChunkSize / 0x400;
-
-            using MemoryStream ImageHeaderStream = new();
-            BinaryWriter binaryWriter = new(ImageHeaderStream);
-
-            binaryWriter.Write(Size);
-            binaryWriter.Write(Signature);
-            binaryWriter.Write(ManifestLength);
-            binaryWriter.Write(ChunkSize);
-
-            byte[] ImageHeaderBuffer = new byte[ImageHeaderStream.Length];
-            ImageHeaderStream.Seek(0, SeekOrigin.Begin);
-            ImageHeaderStream.ReadExactly(ImageHeaderBuffer, 0, ImageHeaderBuffer.Length);
-
-            return ImageHeaderBuffer;
-        }
+        public uint SectorSize;
+        public uint MinSectorCount;
     }
 }

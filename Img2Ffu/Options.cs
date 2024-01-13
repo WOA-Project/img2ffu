@@ -49,13 +49,13 @@ namespace Img2Ffu
             public string OperatingSystemVersion { get; set; }
 
             [Option('c', "block-size", Required = false, HelpText = "Block size to use for the FFU file", Default = 0x20000u)]
-            public UInt32 BlockSize { get; set; }
+            public uint BlockSize { get; set; }
 
             [Option('s', "sector-size", Required = false, HelpText = "Sector size to use for the FFU file", Default = 0x200u)]
-            public UInt32 SectorSize { get; set; }
+            public uint SectorSize { get; set; }
 
             [Option('b', "blanksectorbuffer-size", Required = false, HelpText = "Buffer size for the upper maximum allowed limit of blank sectors", Default = 100u)]
-            public UInt32 MaximumNumberOfBlankBlocksAllowed { get; set; }
+            public uint MaximumNumberOfBlankBlocksAllowed { get; set; }
         }
     }
 }

@@ -28,24 +28,24 @@ namespace Img2Ffu
     public partial class GPT
     {
         private byte[] GPTBuffer;
-        private readonly UInt32 HeaderOffset;
-        private readonly UInt32 HeaderSize;
-        private UInt32 TableOffset;
-        private UInt32 TableSize;
-        private readonly UInt32 PartitionEntrySize;
-        private readonly UInt32 MaxPartitions;
-        internal UInt64 FirstUsableSector;
-        internal UInt64 LastUsableSector;
+        private readonly uint HeaderOffset;
+        private readonly uint HeaderSize;
+        private uint TableOffset;
+        private uint TableSize;
+        private readonly uint PartitionEntrySize;
+        private readonly uint MaxPartitions;
+        internal ulong FirstUsableSector;
+        internal ulong LastUsableSector;
         internal bool HasChanged = false;
         
         public List<Partition> Partitions = [];
         
-        internal GPT(byte[] GPTBuffer, UInt32 SectorSize)
+        internal GPT(byte[] GPTBuffer, uint SectorSize)
         {
             this.GPTBuffer = GPTBuffer;
-            UInt32? TempHeaderOffset = ByteOperations.FindAscii(GPTBuffer, "EFI PART") ?? throw new Exception("Bad GPT");
+            uint? TempHeaderOffset = ByteOperations.FindAscii(GPTBuffer, "EFI PART") ?? throw new Exception("Bad GPT");
 
-            HeaderOffset = (UInt32)TempHeaderOffset;
+            HeaderOffset = (uint)TempHeaderOffset;
             HeaderSize = ByteOperations.ReadUInt32(GPTBuffer, HeaderOffset + 0x0C);
             TableOffset = HeaderOffset + SectorSize;
             FirstUsableSector = ByteOperations.ReadUInt64(GPTBuffer, HeaderOffset + 0x28);
@@ -58,7 +58,7 @@ namespace Img2Ffu
                 throw new Exception("Bad GPT");
             }
 
-            UInt32 PartitionOffset = TableOffset;
+            uint PartitionOffset = TableOffset;
 
             while (PartitionOffset < (TableOffset + TableSize))
             {
@@ -89,7 +89,7 @@ namespace Img2Ffu
             return Partitions.Where(p => (string.Compare(p.Name, Name, true) == 0)).FirstOrDefault();
         }
 
-        internal byte[] Rebuild(UInt32 SectorSize)
+        internal byte[] Rebuild(uint SectorSize)
         {
             if (GPTBuffer == null)
             {
@@ -102,7 +102,7 @@ namespace Img2Ffu
                 Array.Clear(GPTBuffer, (int)TableOffset, (int)TableSize);
             }
 
-            UInt32 PartitionOffset = TableOffset;
+            uint PartitionOffset = TableOffset;
             foreach (Partition CurrentPartition in Partitions)
             {
                 ByteOperations.WriteGuid(GPTBuffer, PartitionOffset + 0x00, CurrentPartition.PartitionTypeGuid);

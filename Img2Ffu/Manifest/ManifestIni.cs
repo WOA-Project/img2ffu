@@ -21,14 +21,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using System;
 using System.Collections.Generic;
 
-namespace Img2Ffu
+namespace Img2Ffu.Manifest
 {
     internal class ManifestIni
     {
-        internal static string BuildUpManifest(FullFlash fullFlash, Store store, List<Partition> partitions)
+        internal static string BuildUpManifest(FullFlashManifest fullFlash, StoreManifest store, List<PartitionManifest> partitions)
         {
             string Manifest = "[FullFlash]\r\n";
             if (!string.IsNullOrEmpty(fullFlash.AntiTheftVersion))
@@ -61,7 +60,7 @@ namespace Img2Ffu
             Manifest += "MinSectorCount = " + store.MinSectorCount + "\r\n";
             Manifest += "\r\n";
 
-            foreach (Partition partition in partitions)
+            foreach (PartitionManifest partition in partitions)
             {
                 Manifest += "[Partition]\r\n";
                 if (partition.RequiredToFlash.HasValue)
@@ -112,51 +111,22 @@ namespace Img2Ffu
             return Manifest;
         }
 
-        internal static List<Partition> GPTPartitionsToPartitions(List<GPT.Partition> partitions)
+        internal static List<PartitionManifest> GPTPartitionsToPartitions(List<GPT.Partition> partitions)
         {
-            List<Partition> Parts = [];
+            List<PartitionManifest> Parts = [];
 
             // TODO: implement more
             foreach (GPT.Partition part in partitions)
             {
-                Parts.Add(new Partition() { Name = part.Name, TotalSectors = (uint)part.SizeInSectors, UsedSectors = (uint)part.SizeInSectors, RequiredToFlash = true });
+                Parts.Add(new PartitionManifest() { Name = part.Name, TotalSectors = (uint)part.SizeInSectors, UsedSectors = (uint)part.SizeInSectors, RequiredToFlash = true });
             }
 
             return Parts;
         }
 
-        internal static string BuildUpManifest(FullFlash fullFlash, Store store, List<GPT.Partition> partitions)
+        internal static string BuildUpManifest(FullFlashManifest fullFlash, StoreManifest store, List<GPT.Partition> partitions)
         {
             return BuildUpManifest(fullFlash, store, GPTPartitionsToPartitions(partitions));
         }
-    }
-
-    internal class FullFlash
-    {
-        public string AntiTheftVersion = "1.1"; // Allow flashing on all devices
-        public string OSVersion;
-        public string Description = "Update on: " + DateTime.Now.ToString("u") + "::\r\n";
-        public string Version = "2.0";
-        public string DevicePlatformId0;
-    }
-
-    internal class Store
-    {
-        public UInt32 SectorSize;
-        public UInt32 MinSectorCount;
-    }
-
-    internal class Partition
-    {
-        public bool? RequiredToFlash;
-        public UInt32 UsedSectors;
-        public Guid Type;
-        public UInt32 TotalSectors;
-        public string Primary;
-        public string Name;
-        public string FileSystem;
-        public UInt32? ByteAlignment;
-        public UInt32? ClusterSize;
-        public bool? UseAllSpace;
     }
 }

@@ -32,12 +32,12 @@ namespace Img2Ffu
 {
     internal class ImageSplitter
     {
-        internal static (FlashPart[], ulong, List<GPT.Partition> partitions) GetImageSlices(Stream stream, UInt32 chunkSize, string[] excluded, UInt32 sectorSize)
+        internal static (FlashPart[], ulong, List<GPT.Partition> partitions) GetImageSlices(Stream stream, uint chunkSize, string[] excluded, uint sectorSize)
         {
             byte[] GPTBuffer = new byte[chunkSize];
-            stream.Read(GPTBuffer, 0, (Int32)chunkSize);
+            stream.Read(GPTBuffer, 0, (int)chunkSize);
 
-            UInt32 sectorsInAChunk = chunkSize / sectorSize;
+            uint sectorsInAChunk = chunkSize / sectorSize;
 
             GPT GPT = new(GPTBuffer, sectorSize);
 
@@ -89,7 +89,7 @@ namespace Img2Ffu
                     }
                 }
 
-                string outputString = (isExcluded ? "*" : "") + partition.Name + new String(' ', 50);
+                string outputString = (isExcluded ? "*" : "") + partition.Name + new string(' ', 50);
                 outputString = outputString.Insert(25, " - " + partition.FirstSector);
                 outputString = outputString.Insert(40, " - " + partition.LastSector);
                 Logging.Log(outputString, isExcluded ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
@@ -125,14 +125,14 @@ namespace Img2Ffu
                 }
 
                 previousWasExcluded = false;
-                currentFlashPart.Stream = new PartialStream(stream, (Int64)currentFlashPart.StartLocation, (Int64)(partition.LastSector + 1) * sectorSize);
+                currentFlashPart.Stream = new PartialStream(stream, (long)currentFlashPart.StartLocation, (long)(partition.LastSector + 1) * sectorSize);
             }
 
             if (!previousWasExcluded)
             {
                 if (currentFlashPart != null)
                 {
-                    currentFlashPart.Stream = new PartialStream(stream, (Int64)currentFlashPart.StartLocation, stream.Length);
+                    currentFlashPart.Stream = new PartialStream(stream, (long)currentFlashPart.StartLocation, stream.Length);
 
                     if ((currentFlashPart.StartLocation / sectorSize) % sectorsInAChunk != 0)
                     {

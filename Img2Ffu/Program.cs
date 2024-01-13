@@ -26,7 +26,9 @@ using DiscUtils;
 using Img2Ffu.Data;
 using Img2Ffu.Flashing;
 using Img2Ffu.Helpers;
+using Img2Ffu.Manifest;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -92,14 +94,14 @@ namespace Img2Ffu
             return catalog;
         }
 
-        private static byte[] GetWriteDescriptorsBuffer(IEnumerable<BlockPayload> payloads)
+        private static byte[] GetWriteDescriptorsBuffer(IEnumerable<BlockPayload> payloads, StoreHeaderVersion storeHeaderVersion)
         {
             using MemoryStream WriteDescriptorsStream = new();
             BinaryWriter binaryWriter = new(WriteDescriptorsStream);
 
             foreach (BlockPayload payload in payloads)
             {
-                byte[] WriteDescriptorBuffer = payload.WriteDescriptor.GetResultingBuffer(StoreHeaderVersion.V1);
+                byte[] WriteDescriptorBuffer = payload.WriteDescriptor.GetResultingBuffer(storeHeaderVersion);
                 binaryWriter.Write(WriteDescriptorBuffer);
             }
 
@@ -110,35 +112,24 @@ namespace Img2Ffu
             return WriteDescriptorsBuffer;
         }
 
-        private static byte[] GenerateHashTable(FileStream ImageHeaderBufferPlusManifestBufferFileStream, FileStream StoreHeaderPlusWriteDescriptorBufferFileStream, IOrderedEnumerable<BlockPayload> BlockPayloads, UInt32 BlockSize)
+        private static byte[] GenerateHashTable(MemoryStream FFUMetadataHeaderTempFileStream, IOrderedEnumerable<BlockPayload> BlockPayloads, uint BlockSize)
         {
-            ImageHeaderBufferPlusManifestBufferFileStream.Seek(0, SeekOrigin.Begin);
-            StoreHeaderPlusWriteDescriptorBufferFileStream.Seek(0, SeekOrigin.Begin);
+            FFUMetadataHeaderTempFileStream.Seek(0, SeekOrigin.Begin);
 
             using MemoryStream HashTableStream = new MemoryStream();
             BinaryWriter binaryWriter = new(HashTableStream);
 
-            for (int i = 0; i < ImageHeaderBufferPlusManifestBufferFileStream.Length / BlockSize; i++)
+            for (int i = 0; i < FFUMetadataHeaderTempFileStream.Length / BlockSize; i++)
             {
                 byte[] buffer = new byte[BlockSize];
-                ImageHeaderBufferPlusManifestBufferFileStream.Read(buffer, 0, (Int32)BlockSize);
+                FFUMetadataHeaderTempFileStream.Read(buffer, 0, (int)BlockSize);
                 byte[] hash = SHA256.HashData(buffer);
                 binaryWriter.Write(hash, 0, hash.Length);
             }
 
+            foreach (BlockPayload payload in BlockPayloads)
             {
-                for (int i = 0; i < StoreHeaderPlusWriteDescriptorBufferFileStream.Length / BlockSize; i++)
-                {
-                    byte[] buffer = new byte[BlockSize];
-                    StoreHeaderPlusWriteDescriptorBufferFileStream.Read(buffer, 0, (Int32)BlockSize);
-                    byte[] hash = SHA256.HashData(buffer);
-                    binaryWriter.Write(hash, 0, hash.Length);
-                }
-
-                foreach (BlockPayload payload in BlockPayloads)
-                {
-                    binaryWriter.Write(payload.ChunkHash, 0, payload.ChunkHash.Length);
-                }
+                binaryWriter.Write(payload.ChunkHash, 0, payload.ChunkHash.Length);
             }
 
             binaryWriter.Close();
@@ -273,37 +264,43 @@ namespace Img2Ffu
             +------------------------------+
         */
 
-        private static void GenerateFFU(string InputFile, string FFUFile, string PlatformID, UInt32 SectorSize, UInt32 BlockSize, string AntiTheftVersion, string OperatingSystemVersion, string[] ExcludedPartitionNames, UInt32 MaximumNumberOfBlankBlocksAllowed)
+        private static void GenerateFFU(string InputFile, string FFUFile, string PlatformID, uint SectorSize, uint BlockSize, string AntiTheftVersion, string OperatingSystemVersion, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed)
         {
-            Logging.Log("Input image: " + InputFile);
-            Logging.Log("Destination image: " + FFUFile);
-            Logging.Log("Platform ID: " + PlatformID);
+            Logging.Log($"Input image: {InputFile}");
+            Logging.Log($"Destination image: {FFUFile}");
+            Logging.Log($"Platform ID: {PlatformID}");
+            Logging.Log($"Sector Size: {SectorSize}");
+            Logging.Log($"Block Size: {BlockSize}");
+            Logging.Log($"Anti Theft Version: {AntiTheftVersion}");
+            Logging.Log($"OS Version: {OperatingSystemVersion}");
             Logging.Log("");
 
-            Stream stream;
-            VirtualDisk inputDisk = null;
+            Logging.Log("Opening input file...");
+
+            Stream InputStream;
+            VirtualDisk InputDisk = null;
 
             if (InputFile.Contains(@"\\.\physicaldrive", StringComparison.CurrentCultureIgnoreCase))
             {
-                stream = new Streams.DeviceStream(InputFile, FileAccess.Read);
+                InputStream = new Streams.DeviceStream(InputFile, FileAccess.Read);
             }
             else if (File.Exists(InputFile) && Path.GetExtension(InputFile).Equals(".vhd", StringComparison.InvariantCultureIgnoreCase))
             {
                 DiscUtils.Setup.SetupHelper.RegisterAssembly(typeof(DiscUtils.Vhd.Disk).Assembly);
                 DiscUtils.Setup.SetupHelper.RegisterAssembly(typeof(DiscUtils.Vhdx.Disk).Assembly);
-                inputDisk = VirtualDisk.OpenDisk(InputFile, FileAccess.Read);
-                stream = inputDisk.Content;
+                InputDisk = VirtualDisk.OpenDisk(InputFile, FileAccess.Read);
+                InputStream = InputDisk.Content;
             }
             else if (File.Exists(InputFile) && Path.GetExtension(InputFile).Equals(".vhdx", StringComparison.InvariantCultureIgnoreCase))
             {
                 DiscUtils.Setup.SetupHelper.RegisterAssembly(typeof(DiscUtils.Vhd.Disk).Assembly);
                 DiscUtils.Setup.SetupHelper.RegisterAssembly(typeof(DiscUtils.Vhdx.Disk).Assembly);
-                inputDisk = VirtualDisk.OpenDisk(InputFile, FileAccess.Read);
-                stream = inputDisk.Content;
+                InputDisk = VirtualDisk.OpenDisk(InputFile, FileAccess.Read);
+                InputStream = InputDisk.Content;
             }
             else if (File.Exists(InputFile))
             {
-                stream = new FileStream(InputFile, FileMode.Open);
+                InputStream = new FileStream(InputFile, FileMode.Open);
             }
             else
             {
@@ -311,61 +308,33 @@ namespace Img2Ffu
                 return;
             }
 
-            (FlashPart[] flashParts, ulong EndOfPLATPartition, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(stream, BlockSize, ExcludedPartitionNames, SectorSize);
+            Logging.Log("Generating Image Slices...");
+            (FlashPart[] flashParts, ulong EndOfPLATPartition, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(InputStream, BlockSize, ExcludedPartitionNames, SectorSize);
 
+            Logging.Log("Generating Block Payloads...");
             IOrderedEnumerable<BlockPayload> BlockPayloads = FlashingPayloadGenerator.GetOptimizedPayloads(flashParts, BlockSize, MaximumNumberOfBlankBlocksAllowed).OrderBy(x => x.WriteDescriptor);
 
-            Logging.Log("");
-            Logging.Log("Building image headers...");
-
-            string FirstHeaderFilePath = Path.GetTempFileName();
-            FileStream ImageHeaderBufferPlusManifestBufferFileStream = new(FirstHeaderFilePath, FileMode.OpenOrCreate);
-
-            // ==============================
-            // Header 1 start
-
-            ImageHeader Image = new();
-            FullFlash FullFlash = new();
-            Store Store = new();
-
             // Todo make this read the image itself
-            FullFlash.OSVersion = OperatingSystemVersion;
-            FullFlash.DevicePlatformId0 = PlatformID;
-            FullFlash.AntiTheftVersion = AntiTheftVersion;
+            Logging.Log("Generating full flash manifest...");
+            FullFlashManifest FullFlash = new()
+            {
+                OSVersion = OperatingSystemVersion,
+                DevicePlatformId0 = PlatformID,
+                AntiTheftVersion = AntiTheftVersion
+            };
 
-            Store.SectorSize = SectorSize;
-            Store.MinSectorCount = (UInt32)(stream.Length / Store.SectorSize);
+            Logging.Log("Generating store manifest...");
+            StoreManifest Store = new()
+            {
+                SectorSize = SectorSize,
+                MinSectorCount = (uint)(InputStream.Length / SectorSize)
+            };
 
             Logging.Log("Generating image manifest...");
-            string manifest = ManifestIni.BuildUpManifest(FullFlash, Store, partitions);
+            string ImageManifest = ManifestIni.BuildUpManifest(FullFlash, Store, partitions);
+            byte[] ManifestBuffer = System.Text.Encoding.ASCII.GetBytes(ImageManifest);
 
-            byte[] ManifestBuffer = System.Text.Encoding.ASCII.GetBytes(manifest);
-
-            Image.ManifestLength = (UInt32)ManifestBuffer.Length;
-
-            byte[] ImageHeaderBuffer = new byte[0x18];
-
-            ByteOperations.WriteUInt32(ImageHeaderBuffer, 0, Image.Size);
-            ByteOperations.WriteAsciiString(ImageHeaderBuffer, 0x04, Image.Signature);
-            ByteOperations.WriteUInt32(ImageHeaderBuffer, 0x10, Image.ManifestLength);
-            ByteOperations.WriteUInt32(ImageHeaderBuffer, 0x14, Image.ChunkSize);
-
-            ImageHeaderBufferPlusManifestBufferFileStream.Write(ImageHeaderBuffer, 0, 0x18);
-            ImageHeaderBufferPlusManifestBufferFileStream.Write(ManifestBuffer, 0, ManifestBuffer.Length);
-
-            RoundUpToChunks(ImageHeaderBufferPlusManifestBufferFileStream, BlockSize);
-
-            // Header 1 stop + round
-            // ==============================
-
-            string StoreHeaderPlusWriteDescriptorBufferFilePath = Path.GetTempFileName();
-            FileStream StoreHeaderPlusWriteDescriptorBufferFileStream = new(StoreHeaderPlusWriteDescriptorBufferFilePath, FileMode.OpenOrCreate);
-
-            // ==============================
-            // Header 2 start
-
-            byte[] WriteDescriptorBuffer = GetWriteDescriptorsBuffer(BlockPayloads);
-            UInt32 FlashOnlyTableIndex = 0;
+            uint FlashOnlyTableIndex = 0;
 
             bool reachedEnd = false;
             foreach (BlockPayload payload in BlockPayloads)
@@ -387,94 +356,155 @@ namespace Img2Ffu
                 }
             }
 
+            Logging.Log("Generating image header...");
+            ImageHeader ImageHeader = new()
+            {
+                ManifestLength = (uint)ManifestBuffer.Length
+            };
+
+            byte[] ImageHeaderBuffer = ImageHeader.GetResultingBuffer(BlockSize);
+
+            Logging.Log("Generating write descriptors...");
+            byte[] WriteDescriptorBuffer = GetWriteDescriptorsBuffer(BlockPayloads, StoreHeaderVersion.V1);
+
+            Logging.Log("Generating store header...");
             StoreHeader store = new()
             {
-                WriteDescriptorCount = (UInt32)BlockPayloads.Count(),
-                WriteDescriptorLength = (UInt32)WriteDescriptorBuffer.Length,
+                WriteDescriptorCount = (uint)BlockPayloads.Count(),
+                WriteDescriptorLength = (uint)WriteDescriptorBuffer.Length,
                 FlashOnlyTableIndex = FlashOnlyTableIndex,
                 PlatformIds = [PlatformID],
                 BlockSizeInBytes = BlockSize
             };
 
             byte[] StoreHeaderBuffer = store.GetResultingBuffer(StoreHeaderVersion.V1, StoreHeaderUpdateType.Full, StoreHeaderCompressionAlgorithm.None);
-            StoreHeaderPlusWriteDescriptorBufferFileStream.Write(StoreHeaderBuffer, 0, StoreHeaderBuffer.Length);
-            StoreHeaderPlusWriteDescriptorBufferFileStream.Write(WriteDescriptorBuffer, 0, (Int32)store.WriteDescriptorLength);
 
-            RoundUpToChunks(StoreHeaderPlusWriteDescriptorBufferFileStream, BlockSize);
+            using MemoryStream FFUMetadataHeaderStream = new();
 
-            // Header 2 stop + round
-            // ==============================
+            //
+            // Image Header
+            //
+            Logging.Log("Writing Image Header...");
+            FFUMetadataHeaderStream.Write(ImageHeaderBuffer, 0, 0x18);
+
+            //
+            // Image Manifest
+            //
+            Logging.Log("Writing Image Manifest...");
+            FFUMetadataHeaderStream.Write(ManifestBuffer, 0, ManifestBuffer.Length);
+
+            //
+            // (Block Size) Padding
+            //
+            Logging.Log("Writing Padding...");
+            RoundUpToChunks(FFUMetadataHeaderStream, BlockSize);
+
+            //
+            // Store Header[0]
+            //
+            Logging.Log("Writing Store Header...");
+            FFUMetadataHeaderStream.Write(StoreHeaderBuffer, 0, StoreHeaderBuffer.Length);
+
+            //
+            // Write Descriptors[0]
+            //
+            Logging.Log("Writing Write Descriptors...");
+            FFUMetadataHeaderStream.Write(WriteDescriptorBuffer, 0, (int)store.WriteDescriptorLength);
+
+            //
+            // (Block Size) Padding[0]
+            //
+            Logging.Log("Writing Padding...");
+            RoundUpToChunks(FFUMetadataHeaderStream, BlockSize);
 
             Logging.Log("Generating image hash table...");
-            byte[] HashTable = GenerateHashTable(ImageHeaderBufferPlusManifestBufferFileStream, StoreHeaderPlusWriteDescriptorBufferFileStream, BlockPayloads, BlockSize);
+            byte[] HashTable = GenerateHashTable(FFUMetadataHeaderStream, BlockPayloads, BlockSize);
 
             Logging.Log("Generating image catalog...");
             byte[] CatalogBuffer = GenerateCatalogFile(HashTable);
 
+            Logging.Log("Generating Security Header...");
             SecurityHeader security = new()
             {
-                HashTableSize = (UInt32)HashTable.Length,
-                CatalogSize = (UInt32)CatalogBuffer.Length
+                HashTableSize = (uint)HashTable.Length,
+                CatalogSize = (uint)CatalogBuffer.Length
             };
 
-            byte[] SecurityHeaderBuffer = new byte[0x20];
+            byte[] SecurityHeaderBuffer = security.GetResultingBuffer(BlockSize);
 
-            ByteOperations.WriteUInt32(SecurityHeaderBuffer, 0, security.Size);
-            ByteOperations.WriteAsciiString(SecurityHeaderBuffer, 0x04, security.Signature);
-            ByteOperations.WriteUInt32(SecurityHeaderBuffer, 0x10, security.ChunkSizeInKb);
-            ByteOperations.WriteUInt32(SecurityHeaderBuffer, 0x14, security.HashAlgorithm);
-            ByteOperations.WriteUInt32(SecurityHeaderBuffer, 0x18, security.CatalogSize);
-            ByteOperations.WriteUInt32(SecurityHeaderBuffer, 0x1C, security.HashTableSize);
+            byte[] FFUMetadataHeaderBuffer = new byte[FFUMetadataHeaderStream.Length];
+            FFUMetadataHeaderStream.Seek(0, SeekOrigin.Begin);
+            FFUMetadataHeaderStream.Read(FFUMetadataHeaderBuffer, 0, (int)FFUMetadataHeaderStream.Length);
 
+            Logging.Log("Opening FFU file for writing...");
+            WriteFFUFile(FFUFile, SecurityHeaderBuffer, CatalogBuffer, HashTable, FFUMetadataHeaderBuffer, BlockPayloads, flashParts, BlockSize);
+
+            InputDisk?.Dispose();
+        }
+
+        private static void WriteFFUFile(string FFUFile, byte[] SecurityHeaderBuffer, byte[] CatalogBuffer, byte[] HashTable, byte[] FFUMetadataHeaderBuffer, IOrderedEnumerable<BlockPayload> BlockPayloads, FlashPart[] flashParts, uint BlockSize)
+        {
             FileStream FFUFileStream = new(FFUFile, FileMode.CreateNew);
 
-            // ==============================
+            //
+            // Security Header
+            //
+            Logging.Log("Writing Security Header...");
+            FFUFileStream.Write(SecurityHeaderBuffer, 0, SecurityHeaderBuffer.Length);
 
-            FFUFileStream.Write(SecurityHeaderBuffer, 0, 0x20);
-            FFUFileStream.Write(CatalogBuffer, 0, (Int32)security.CatalogSize);
-            FFUFileStream.Write(HashTable, 0, (Int32)security.HashTableSize);
+            //
+            // Security Catalog
+            //
+            Logging.Log("Writing Security Catalog...");
+            FFUFileStream.Write(CatalogBuffer, 0, CatalogBuffer.Length);
 
+            //
+            // Hash Table
+            //
+            Logging.Log("Writing Hash Table...");
+            FFUFileStream.Write(HashTable, 0, HashTable.Length);
+
+            //
+            // (Block Size) Padding
+            //
+            Logging.Log("Writing Padding...");
             RoundUpToChunks(FFUFileStream, BlockSize);
 
-            // ==============================
-
-            // Copies First Header into the FFU File Stream
-            ImageHeaderBufferPlusManifestBufferFileStream.Seek(0, SeekOrigin.Begin);
-            byte[] TemporaryFileBuffer = new byte[ImageHeaderBufferPlusManifestBufferFileStream.Length];
-            ImageHeaderBufferPlusManifestBufferFileStream.Read(TemporaryFileBuffer, 0, (Int32)ImageHeaderBufferPlusManifestBufferFileStream.Length);
-            ImageHeaderBufferPlusManifestBufferFileStream.Close();
-            File.Delete(FirstHeaderFilePath);
-            FFUFileStream.Write(TemporaryFileBuffer, 0, TemporaryFileBuffer.Length);
-
-            // ==============================
-
-            // Copies Second Header into the FFU File Stream
-            StoreHeaderPlusWriteDescriptorBufferFileStream.Seek(0, SeekOrigin.Begin);
-            TemporaryFileBuffer = new byte[StoreHeaderPlusWriteDescriptorBufferFileStream.Length];
-            StoreHeaderPlusWriteDescriptorBufferFileStream.Read(TemporaryFileBuffer, 0, (Int32)StoreHeaderPlusWriteDescriptorBufferFileStream.Length);
-            StoreHeaderPlusWriteDescriptorBufferFileStream.Close();
-            File.Delete(StoreHeaderPlusWriteDescriptorBufferFilePath);
-            FFUFileStream.Write(TemporaryFileBuffer, 0, TemporaryFileBuffer.Length);
-
-            // ==============================
-
-            Logging.Log("Writing payloads...");
+            //
+            // Image Header
+            // Image Manifest
+            // (Block Size) Padding
+            // Store Header[0]
+            // Write Descriptors[0]
+            // (Block Size) Padding[0]
+            //
+            Logging.Log("Writing Image Header...");
+            Logging.Log("Writing Image Manifest...");
+            Logging.Log("Writing Padding...");
+            Logging.Log("Writing Store Header...");
+            Logging.Log("Writing Write Descriptors...");
+            Logging.Log("Writing Padding...");
+            FFUFileStream.Write(FFUMetadataHeaderBuffer, 0, FFUMetadataHeaderBuffer.Length);
 
             DateTime startTime = DateTime.Now;
 
-            for (UInt64 CurrentBlockIndex = 0; CurrentBlockIndex < (UInt64)BlockPayloads.Count(); CurrentBlockIndex++)
+            //
+            // Data Blocks
+            //
+            Logging.Log("Writing Data Blocks...");
+            for (ulong CurrentBlockIndex = 0; CurrentBlockIndex < (ulong)BlockPayloads.Count(); CurrentBlockIndex++)
             {
-                BlockPayload BlockPayload = BlockPayloads.ElementAt((Int32)CurrentBlockIndex);
-                UInt32 FlashPartIndex = BlockPayload.FlashPartIndex;
+                BlockPayload BlockPayload = BlockPayloads.ElementAt((int)CurrentBlockIndex);
+                uint FlashPartIndex = BlockPayload.FlashPartIndex;
                 FlashPart FlashPart = flashParts[FlashPartIndex];
                 Stream FlashPartStream = FlashPart.Stream;
                 FlashPartStream.Seek(BlockPayload.FlashPartStreamLocation, SeekOrigin.Begin);
 
                 byte[] BlockBuffer = new byte[BlockSize];
-                FlashPartStream.Read(BlockBuffer, 0, (Int32)BlockSize);
-                FFUFileStream.Write(BlockBuffer, 0, (Int32)BlockSize);
+                FlashPartStream.Read(BlockBuffer, 0, (int)BlockSize);
+                FFUFileStream.Write(BlockBuffer, 0, (int)BlockSize);
 
-                ulong totalBytes = (UInt64)BlockPayloads.Count() * BlockSize;
+                ulong totalBytes = (ulong)BlockPayloads.Count() * BlockSize;
                 ulong bytesRead = CurrentBlockIndex * BlockSize;
                 ulong sourcePosition = CurrentBlockIndex * BlockSize;
 
@@ -482,17 +512,26 @@ namespace Img2Ffu
             }
 
             FFUFileStream.Close();
-            inputDisk?.Dispose();
             Logging.Log("");
         }
 
-        private static void RoundUpToChunks(FileStream stream, UInt32 chunkSize)
+        private static void RoundUpToChunks(FileStream stream, uint chunkSize)
         {
-            Int64 Size = stream.Length;
+            long Size = stream.Length;
             if ((Size % chunkSize) > 0)
             {
-                Int64 padding = (UInt32)(((Size / chunkSize) + 1) * chunkSize) - Size;
-                stream.Write(new byte[padding], 0, (Int32)padding);
+                long padding = (uint)(((Size / chunkSize) + 1) * chunkSize) - Size;
+                stream.Write(new byte[padding], 0, (int)padding);
+            }
+        }
+
+        private static void RoundUpToChunks(MemoryStream stream, uint chunkSize)
+        {
+            long Size = stream.Length;
+            if ((Size % chunkSize) > 0)
+            {
+                long padding = (uint)(((Size / chunkSize) + 1) * chunkSize) - Size;
+                stream.Write(new byte[padding], 0, (int)padding);
             }
         }
 

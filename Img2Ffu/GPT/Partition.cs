@@ -26,16 +26,16 @@ namespace Img2Ffu
     {
         public class Partition
         {
-            private UInt64 _SizeInSectors;
-            private UInt64 _FirstSector;
-            private UInt64 _LastSector;
+            private ulong _SizeInSectors;
+            private ulong _FirstSector;
+            private ulong _LastSector;
 
             public string Name;            // 0x48
             public Guid PartitionTypeGuid; // 0x10
             public Guid PartitionGuid;     // 0x10
-            internal UInt64 Attributes;      // 0x08
+            internal ulong Attributes;      // 0x08
             
-            internal UInt64 SizeInSectors
+            internal ulong SizeInSectors
             {
                 get
                 {
@@ -58,7 +58,7 @@ namespace Img2Ffu
                 }
             }
             
-            internal UInt64 FirstSector // 0x08
+            internal ulong FirstSector // 0x08
             {
                 get
                 {
@@ -74,7 +74,7 @@ namespace Img2Ffu
                 }
             }
             
-            internal UInt64 LastSector // 0x08
+            internal ulong LastSector // 0x08
             {
                 get
                 {

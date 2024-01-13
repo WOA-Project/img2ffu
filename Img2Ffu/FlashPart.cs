@@ -26,9 +26,9 @@ using System.IO;
 
 namespace Img2Ffu
 {
-    internal class FlashPart(Stream Stream, UInt64 StartLocation)
+    internal class FlashPart(Stream Stream, ulong StartLocation)
     {
         public Stream Stream = Stream;
-        public UInt64 StartLocation = StartLocation;
+        public ulong StartLocation = StartLocation;
     }
 }

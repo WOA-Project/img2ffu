@@ -21,6 +21,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
+using System.IO;
+
 namespace Img2Ffu.Data
 {
     public class SecurityHeader
@@ -31,5 +33,26 @@ namespace Img2Ffu.Data
         public uint HashAlgorithm = 0x800C; // SHA256 algorithm id
         public uint CatalogSize;
         public uint HashTableSize;
+
+        public byte[] GetResultingBuffer(uint ChunkSize)
+        {
+            using MemoryStream SecurityHeaderStream = new();
+            BinaryWriter binaryWriter = new(SecurityHeaderStream);
+
+            ChunkSizeInKb = ChunkSize / 0x400;
+
+            binaryWriter.Write(Size);
+            binaryWriter.Write(Signature);
+            binaryWriter.Write(ChunkSizeInKb);
+            binaryWriter.Write(HashAlgorithm);
+            binaryWriter.Write(CatalogSize);
+            binaryWriter.Write(HashTableSize);
+
+            byte[] SecurityHeaderBuffer = new byte[SecurityHeaderStream.Length];
+            SecurityHeaderStream.Seek(0, SeekOrigin.Begin);
+            SecurityHeaderStream.ReadExactly(SecurityHeaderBuffer, 0, SecurityHeaderBuffer.Length);
+
+            return SecurityHeaderBuffer;
+        }
     }
 }

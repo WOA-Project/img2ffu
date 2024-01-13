@@ -21,34 +21,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using System.IO;
+using System;
 
-namespace Img2Ffu.Data
+namespace Img2Ffu.Manifest
 {
-    internal class ImageHeader
+    internal class FullFlashManifest
     {
-        public uint Size = 24;
-        public string Signature = "ImageFlash  ";
-        public uint ManifestLength;
-        public uint ChunkSize = 128;
-
-        public byte[] GetResultingBuffer(uint ChunkSize)
-        {
-            this.ChunkSize = ChunkSize / 0x400;
-
-            using MemoryStream ImageHeaderStream = new();
-            BinaryWriter binaryWriter = new(ImageHeaderStream);
-
-            binaryWriter.Write(Size);
-            binaryWriter.Write(Signature);
-            binaryWriter.Write(ManifestLength);
-            binaryWriter.Write(ChunkSize);
-
-            byte[] ImageHeaderBuffer = new byte[ImageHeaderStream.Length];
-            ImageHeaderStream.Seek(0, SeekOrigin.Begin);
-            ImageHeaderStream.ReadExactly(ImageHeaderBuffer, 0, ImageHeaderBuffer.Length);
-
-            return ImageHeaderBuffer;
-        }
+        public string AntiTheftVersion = "1.1"; // Allow flashing on all devices
+        public string OSVersion;
+        public string Description = "Update on: " + DateTime.Now.ToString("u") + "::\r\n";
+        public string Version = "2.0";
+        public string DevicePlatformId0;
     }
 }
