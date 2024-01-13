@@ -48,10 +48,10 @@ namespace Img2Ffu
             [Option('o', "os-version", Required = false, HelpText = "Operating system version.", Default = "10.0.11111.0")]
             public string OperatingSystemVersion { get; set; }
 
-            [Option('c', "chunk-size", Required = false, HelpText = "Chunk size to use for the FFU file", Default = 0x20000u)]
-            public UInt32 ChunkSize { get; set; }
+            [Option('c', "block-size", Required = false, HelpText = "Block size to use for the FFU file", Default = 0x20000u)]
+            public UInt32 BlockSize { get; set; }
 
-            [Option('c', "sector-size", Required = false, HelpText = "Sector size to use for the FFU file", Default = 0x200u)]
+            [Option('s', "sector-size", Required = false, HelpText = "Sector size to use for the FFU file", Default = 0x200u)]
             public UInt32 SectorSize { get; set; }
 
             [Option('b', "blanksectorbuffer-size", Required = false, HelpText = "Buffer size for the upper maximum allowed limit of blank sectors", Default = 100u)]

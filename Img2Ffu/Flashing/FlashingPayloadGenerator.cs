@@ -61,9 +61,9 @@ namespace Img2Ffu.Flashing
 
         private static readonly byte[] EMPTY_BLOCK_HASH = [0xFA, 0x43, 0x23, 0x9B, 0xCE, 0xE7, 0xB9, 0x7C, 0xA6, 0x2F, 0x00, 0x7C, 0xC6, 0x84, 0x87, 0x56, 0x0A, 0x39, 0xE1, 0x9F, 0x74, 0xF3, 0xDD, 0xE7, 0x48, 0x6D, 0xB3, 0xF9, 0x8D, 0xF8, 0xE4, 0x71];
 
-        internal static FlashingPayload[] GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, uint MaximumNumberOfBlankBlocksAllowed)
+        internal static BlockPayload[] GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, uint MaximumNumberOfBlankBlocksAllowed)
         {
-            List<FlashingPayload> flashingPayload = [];
+            List<BlockPayload> flashingPayload = [];
 
             if (flashParts == null)
             {
@@ -82,21 +82,24 @@ namespace Img2Ffu.Flashing
 
             bool blankBlockPhase = false;
             ulong blankBlockCount = 0;
-            List<FlashingPayload> blankBlocks = [];
+            List<BlockPayload> blankBlocks = [];
 
             for (uint flashPartIndex = 0; flashPartIndex < flashParts.Length; flashPartIndex++)
             {
                 FlashPart flashPart = flashParts[(int)flashPartIndex];
 
                 flashPart.Stream.Seek(0, SeekOrigin.Begin);
-                long blockCount = flashPart.Stream.Length / BlockSize;
+                long FlashPartBlockCount = flashPart.Stream.Length / BlockSize;
+                uint FlashPartStartBlockIndex = (uint)flashPart.StartLocation / BlockSize;
 
-                for (uint blockIndex = 0; blockIndex < blockCount; blockIndex++)
+                for (uint FlashPartBlockIndex = 0; FlashPartBlockIndex < FlashPartBlockCount; FlashPartBlockIndex++)
                 {
-                    byte[] blockBuffer = new byte[BlockSize];
-                    long streamLocation = flashPart.Stream.Position;
-                    flashPart.Stream.Read(blockBuffer, 0, (int)BlockSize);
-                    byte[] blockHash = SHA256.HashData(blockBuffer);
+                    byte[] BlockBuffer = new byte[BlockSize];
+                    long BlockLocationInFlashPartStream = flashPart.Stream.Position;
+                    flashPart.Stream.Read(BlockBuffer, 0, (int)BlockSize);
+                    byte[] BlockHash = SHA256.HashData(BlockBuffer);
+
+                    uint DiskBlockIndex = FlashPartStartBlockIndex + FlashPartBlockIndex;
 
                     WriteDescriptor writeDescriptor = new()
                     {
@@ -108,19 +111,19 @@ namespace Img2Ffu.Flashing
 
                         DiskLocations = [new DiskLocation()
                         {
-                            BlockIndex = (uint)flashPart.StartLocation / BlockSize + blockIndex,
+                            BlockIndex = DiskBlockIndex,
                             DiskAccessMethod = 0
                         }]
                     };
 
-                    if (!ByteOperations.Compare(EMPTY_BLOCK_HASH, blockHash))
+                    if (!ByteOperations.Compare(EMPTY_BLOCK_HASH, BlockHash))
                     {
-                        flashingPayload.Add(new FlashingPayload([blockHash], [writeDescriptor], [flashPartIndex], [streamLocation]));
+                        flashingPayload.Add(new BlockPayload(BlockHash, writeDescriptor, flashPartIndex, BlockLocationInFlashPartStream));
 
                         if (blankBlockPhase && blankBlockCount < MaximumNumberOfBlankBlocksAllowed)
                         {
                             // Add the last recorded blank blocks
-                            foreach (FlashingPayload blankBlock in blankBlocks)
+                            foreach (BlockPayload blankBlock in blankBlocks)
                             {
                                 flashingPayload.Add(blankBlock);
                             }
@@ -133,7 +136,7 @@ namespace Img2Ffu.Flashing
                     }
                     else if (blankBlockCount < MaximumNumberOfBlankBlocksAllowed)
                     {
-                        blankBlocks.Add(new FlashingPayload([blockHash], [writeDescriptor], [flashPartIndex], [streamLocation]));
+                        blankBlocks.Add(new BlockPayload(BlockHash, writeDescriptor, flashPartIndex, BlockLocationInFlashPartStream));
 
                         blankBlockPhase = true;
                         blankBlockCount++;
@@ -141,7 +144,7 @@ namespace Img2Ffu.Flashing
                     else if (blankBlockCount >= MaximumNumberOfBlankBlocksAllowed && blankBlocks.Count > 0)
                     {
                         // Add the last recorded blank blocks and clear the list
-                        foreach (FlashingPayload blankBlock in blankBlocks)
+                        foreach (BlockPayload blankBlock in blankBlocks)
                         {
                             flashingPayload.Add(blankBlock);
                         }
