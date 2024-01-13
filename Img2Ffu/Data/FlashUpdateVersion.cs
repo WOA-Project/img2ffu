@@ -1,6 +1,6 @@
 ﻿namespace Img2Ffu.Data
 {
-    public enum StoreHeaderVersion
+    public enum FlashUpdateVersion
     {
         V1,
         V1_COMPRESSED,

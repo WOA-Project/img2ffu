@@ -1,6 +1,6 @@
 ﻿namespace Img2Ffu.Data
 {
-    public enum StoreHeaderUpdateType
+    public enum FlashUpdateType
     {
         Full,
         Partial

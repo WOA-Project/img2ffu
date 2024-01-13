@@ -38,7 +38,7 @@ namespace Img2Ffu.Data
         // Size is 0xC0
         public string[] PlatformIds { get; set; }
 
-        public uint BlockSizeInBytes { get; set; }
+        public uint BlockSize { get; set; }
         public uint WriteDescriptorCount { get; set; }
         public uint WriteDescriptorLength { get; set; }
         public uint ValidateDescriptorCount { get; set; } = 0;
@@ -47,7 +47,9 @@ namespace Img2Ffu.Data
         public uint InitialTableCount { get; set; } = 0;
         public uint FlashOnlyTableIndex { get; set; } = 0; // Should be the index of the critical partitions, but for now we don't implement that
         public uint FlashOnlyTableCount { get; set; } = 1;
+
         private uint FinalTableIndex; //= WriteDescriptorCount - FinalTableCount;
+
         public uint FinalTableCount { get; set; } = 0;
 
         // V1 Compressed
@@ -57,31 +59,33 @@ namespace Img2Ffu.Data
         public ushort NumberOfStores { get; set; } // 0x4 (Total number of stores)
         public ushort StoreIndex { get; set; } // 0x1 (Starts counting from 1)
         public ulong StorePayloadSize { get; set; } // 0x420000
+
         private ushort DevicePathLength; // 0x2b
         // Must be followed by the unicode string of the device path
         // So the total size would be doubled from DevicePathLength in bytes in the binary
+
         private byte[] DevicePathBuffer;
 
         public string DevicePath { get; set; }
 
-        public byte[] GetResultingBuffer(StoreHeaderVersion storeHeaderVersion, StoreHeaderUpdateType storeHeaderUpdateType, StoreHeaderCompressionAlgorithm storeHeaderCompressionAlgorithm)
+        public byte[] GetResultingBuffer(FlashUpdateVersion storeHeaderVersion, FlashUpdateType storeHeaderUpdateType, CompressionAlgorithm storeHeaderCompressionAlgorithm)
         {
             switch (storeHeaderVersion)
             {
-                case StoreHeaderVersion.V1:
+                case FlashUpdateVersion.V1:
                     MajorVersion = 1;
                     MinorVersion = 0;
                     FullFlashMajorVersion = 2;
                     FullFlashMinorVersion = 0;
                     break;
-                case StoreHeaderVersion.V1_COMPRESSED:
+                case FlashUpdateVersion.V1_COMPRESSED:
                     MajorVersion = 1;
                     MinorVersion = 0;
                     FullFlashMajorVersion = 3;
                     FullFlashMinorVersion = 0;
                     CompressionAlgorithm = (uint)storeHeaderCompressionAlgorithm;
                     break;
-                case StoreHeaderVersion.V2:
+                case FlashUpdateVersion.V2:
                     MajorVersion = 2;
                     MinorVersion = 0;
                     FullFlashMajorVersion = 2;
@@ -94,10 +98,10 @@ namespace Img2Ffu.Data
 
             switch (storeHeaderUpdateType)
             {
-                case StoreHeaderUpdateType.Full:
+                case FlashUpdateType.Full:
                     UpdateType = 0;
                     break;
-                case StoreHeaderUpdateType.Partial:
+                case FlashUpdateType.Partial:
                     UpdateType = 1;
                     break;
             }
@@ -127,7 +131,7 @@ namespace Img2Ffu.Data
             binaryWriter.Write(FullFlashMajorVersion);
             binaryWriter.Write(FullFlashMinorVersion);
             binaryWriter.Write(PlatformIdsBuffer);
-            binaryWriter.Write(BlockSizeInBytes);
+            binaryWriter.Write(BlockSize);
             binaryWriter.Write(WriteDescriptorCount);
             binaryWriter.Write(WriteDescriptorLength);
             binaryWriter.Write(ValidateDescriptorCount);
@@ -144,10 +148,10 @@ namespace Img2Ffu.Data
 
             switch (storeHeaderVersion)
             {
-                case StoreHeaderVersion.V1_COMPRESSED:
+                case FlashUpdateVersion.V1_COMPRESSED:
                     binaryWriter.Write(CompressionAlgorithm);
                     break;
-                case StoreHeaderVersion.V2:
+                case FlashUpdateVersion.V2:
                     binaryWriter.Write(DevicePathLength);
                     binaryWriter.Write(DevicePathBuffer);
                     break;

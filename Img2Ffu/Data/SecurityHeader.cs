@@ -27,10 +27,11 @@ namespace Img2Ffu.Data
 {
     public class SecurityHeader
     {
-        public uint Size = 0x20;
-        public string Signature = "SignedImage ";
-        public uint ChunkSizeInKb = 0x80;
-        public uint HashAlgorithm = 0x800C; // SHA256 algorithm id
+        private uint Size = 0x20;
+        private string Signature = "SignedImage ";
+        private uint ChunkSizeInKb = 0x80;
+        private uint HashAlgorithm = 0x800C; // SHA256 algorithm id
+
         public uint CatalogSize;
         public uint HashTableSize;
 

@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 
 namespace Img2Ffu.Data
 {
@@ -8,7 +7,7 @@ namespace Img2Ffu.Data
         public BlockDataEntry BlockDataEntry { get; set; }
         public DiskLocation[] DiskLocations { get; set; }
 
-        public byte[] GetResultingBuffer(StoreHeaderVersion storeHeaderVersion)
+        public byte[] GetResultingBuffer(FlashUpdateVersion storeHeaderVersion)
         {
             using MemoryStream WriteDescriptorStream = new();
             BinaryWriter binaryWriter = new(WriteDescriptorStream);
@@ -20,7 +19,7 @@ namespace Img2Ffu.Data
 
             switch (storeHeaderVersion)
             {
-                case StoreHeaderVersion.V1_COMPRESSED:
+                case FlashUpdateVersion.V1_COMPRESSED:
                     binaryWriter.Write((uint)0);
                     break;
             }

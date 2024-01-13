@@ -27,22 +27,22 @@ namespace Img2Ffu.Data
 {
     internal class ImageHeader
     {
-        public uint Size = 24;
-        public string Signature = "ImageFlash  ";
-        public uint ManifestLength;
-        public uint ChunkSize = 128;
+        public uint ManifestLength { get; set; }
 
-        public byte[] GetResultingBuffer(uint ChunkSize)
+        public byte[] GetResultingBuffer(uint ChunkSize, bool HasDeviceTargetInfo, uint DeviceTargetInfosCount)
         {
-            this.ChunkSize = ChunkSize / 0x400;
-
             using MemoryStream ImageHeaderStream = new();
             BinaryWriter binaryWriter = new(ImageHeaderStream);
 
-            binaryWriter.Write(Size);
-            binaryWriter.Write(Signature);
-            binaryWriter.Write(ManifestLength);
-            binaryWriter.Write(ChunkSize);
+            binaryWriter.Write(HasDeviceTargetInfo ? 28u : 24u); // Size
+            binaryWriter.Write("ImageFlash  "); // Signature
+            binaryWriter.Write(ManifestLength); // Manifest Length
+            binaryWriter.Write(ChunkSize / 0x400); // Chunk Size in KB
+
+            if (HasDeviceTargetInfo)
+            {
+                binaryWriter.Write(DeviceTargetInfosCount); // Device Target Infos Count
+            }
 
             byte[] ImageHeaderBuffer = new byte[ImageHeaderStream.Length];
             ImageHeaderStream.Seek(0, SeekOrigin.Begin);

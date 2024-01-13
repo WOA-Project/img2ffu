@@ -22,7 +22,6 @@ SOFTWARE.
 
 */
 using CommandLine;
-using System;
 
 namespace Img2Ffu
 {

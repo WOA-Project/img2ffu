@@ -30,7 +30,7 @@ using Img2Ffu.Helpers;
 
 namespace Img2Ffu.Flashing
 {
-    internal class FlashingPayloadGenerator
+    internal class BlockPayloadsGenerator
     {
         private static void ShowProgress(long CurrentProgress, long TotalProgress, DateTime startTime, bool DisplayRed)
         {

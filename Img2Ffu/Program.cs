@@ -28,7 +28,6 @@ using Img2Ffu.Flashing;
 using Img2Ffu.Helpers;
 using Img2Ffu.Manifest;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -94,7 +93,7 @@ namespace Img2Ffu
             return catalog;
         }
 
-        private static byte[] GetWriteDescriptorsBuffer(IEnumerable<BlockPayload> payloads, StoreHeaderVersion storeHeaderVersion)
+        private static byte[] GetWriteDescriptorsBuffer(IEnumerable<BlockPayload> payloads, FlashUpdateVersion storeHeaderVersion)
         {
             using MemoryStream WriteDescriptorsStream = new();
             BinaryWriter binaryWriter = new(WriteDescriptorsStream);
@@ -264,17 +263,28 @@ namespace Img2Ffu
             +------------------------------+
         */
 
-        private static void GenerateFFU(string InputFile, string FFUFile, string PlatformID, uint SectorSize, uint BlockSize, string AntiTheftVersion, string OperatingSystemVersion, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed)
+        private static uint GetFlashOnlyTableIndex(IOrderedEnumerable<BlockPayload> BlockPayloads, ulong EndOfPLATPartition)
         {
-            Logging.Log($"Input image: {InputFile}");
-            Logging.Log($"Destination image: {FFUFile}");
-            Logging.Log($"Platform ID: {PlatformID}");
-            Logging.Log($"Sector Size: {SectorSize}");
-            Logging.Log($"Block Size: {BlockSize}");
-            Logging.Log($"Anti Theft Version: {AntiTheftVersion}");
-            Logging.Log($"OS Version: {OperatingSystemVersion}");
-            Logging.Log("");
+            uint FlashOnlyTableIndex = 0;
 
+            foreach (BlockPayload payload in BlockPayloads)
+            {
+                foreach (DiskLocation diskLocation in payload.WriteDescriptor.DiskLocations)
+                {
+                    if (diskLocation.BlockIndex > EndOfPLATPartition)
+                    {
+                        return FlashOnlyTableIndex;
+                    }
+
+                    FlashOnlyTableIndex += 1;
+                }
+            }
+
+            return 0;
+        }
+
+        private static (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, IOrderedEnumerable<BlockPayload> BlockPayloads, FlashPart[] flashParts, VirtualDisk InputDisk) GenerateStore(string InputFile, string PlatformID, uint SectorSize, uint BlockSize, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion FlashUpdateVersion)
+        {
             Logging.Log("Opening input file...");
 
             Stream InputStream;
@@ -305,14 +315,50 @@ namespace Img2Ffu
             else
             {
                 Logging.Log("Unknown input specified");
-                return;
+                return (0, null, null, null, null, null, null);
             }
 
             Logging.Log("Generating Image Slices...");
             (FlashPart[] flashParts, ulong EndOfPLATPartition, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(InputStream, BlockSize, ExcludedPartitionNames, SectorSize);
 
             Logging.Log("Generating Block Payloads...");
-            IOrderedEnumerable<BlockPayload> BlockPayloads = FlashingPayloadGenerator.GetOptimizedPayloads(flashParts, BlockSize, MaximumNumberOfBlankBlocksAllowed).OrderBy(x => x.WriteDescriptor);
+            IOrderedEnumerable<BlockPayload> BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts, BlockSize, MaximumNumberOfBlankBlocksAllowed).OrderBy(x => x.WriteDescriptor);
+
+            Logging.Log("Generating write descriptors...");
+            byte[] WriteDescriptorBuffer = GetWriteDescriptorsBuffer(BlockPayloads, FlashUpdateVersion);
+
+            Logging.Log("Generating store header...");
+            StoreHeader store = new()
+            {
+                WriteDescriptorCount = (uint)BlockPayloads.Count(),
+                WriteDescriptorLength = (uint)WriteDescriptorBuffer.Length,
+                FlashOnlyTableIndex = GetFlashOnlyTableIndex(BlockPayloads, EndOfPLATPartition),
+                PlatformIds = [PlatformID],
+                BlockSize = BlockSize
+            };
+
+            byte[] StoreHeaderBuffer = store.GetResultingBuffer(FlashUpdateVersion, FlashUpdateType.Full, CompressionAlgorithm.None);
+
+            uint MinSectorCount = (uint)(InputStream.Length / SectorSize);
+
+            return (MinSectorCount, partitions, StoreHeaderBuffer, WriteDescriptorBuffer, BlockPayloads, flashParts, InputDisk);
+        }
+
+        private static void GenerateFFU(string InputFile, string FFUFile, string PlatformID, uint SectorSize, uint BlockSize, string AntiTheftVersion, string OperatingSystemVersion, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed)
+        {
+            FlashUpdateVersion FlashUpdateVersion = FlashUpdateVersion.V1;
+            List<DeviceTargetInfo> deviceTargetInfos = [];
+
+            Logging.Log($"Input image: {InputFile}");
+            Logging.Log($"Destination image: {FFUFile}");
+            Logging.Log($"Platform ID: {PlatformID}");
+            Logging.Log($"Sector Size: {SectorSize}");
+            Logging.Log($"Block Size: {BlockSize}");
+            Logging.Log($"Anti Theft Version: {AntiTheftVersion}");
+            Logging.Log($"OS Version: {OperatingSystemVersion}");
+            Logging.Log("");
+
+            (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, IOrderedEnumerable<BlockPayload> BlockPayloads, FlashPart[] flashParts, VirtualDisk InputDisk) = GenerateStore(InputFile, PlatformID, SectorSize, BlockSize, ExcludedPartitionNames, MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion);
 
             // Todo make this read the image itself
             Logging.Log("Generating full flash manifest...");
@@ -327,34 +373,13 @@ namespace Img2Ffu
             StoreManifest Store = new()
             {
                 SectorSize = SectorSize,
-                MinSectorCount = (uint)(InputStream.Length / SectorSize)
+                MinSectorCount = MinSectorCount
             };
 
             Logging.Log("Generating image manifest...");
             string ImageManifest = ManifestIni.BuildUpManifest(FullFlash, Store, partitions);
             byte[] ManifestBuffer = System.Text.Encoding.ASCII.GetBytes(ImageManifest);
 
-            uint FlashOnlyTableIndex = 0;
-
-            bool reachedEnd = false;
-            foreach (BlockPayload payload in BlockPayloads)
-            {
-                foreach (DiskLocation diskLocation in payload.WriteDescriptor.DiskLocations)
-                {
-                    if (diskLocation.BlockIndex > EndOfPLATPartition)
-                    {
-                        reachedEnd = true;
-                        break;
-                    }
-
-                    FlashOnlyTableIndex += 1;
-                }
-
-                if (reachedEnd)
-                {
-                    break;
-                }
-            }
 
             Logging.Log("Generating image header...");
             ImageHeader ImageHeader = new()
@@ -362,22 +387,7 @@ namespace Img2Ffu
                 ManifestLength = (uint)ManifestBuffer.Length
             };
 
-            byte[] ImageHeaderBuffer = ImageHeader.GetResultingBuffer(BlockSize);
-
-            Logging.Log("Generating write descriptors...");
-            byte[] WriteDescriptorBuffer = GetWriteDescriptorsBuffer(BlockPayloads, StoreHeaderVersion.V1);
-
-            Logging.Log("Generating store header...");
-            StoreHeader store = new()
-            {
-                WriteDescriptorCount = (uint)BlockPayloads.Count(),
-                WriteDescriptorLength = (uint)WriteDescriptorBuffer.Length,
-                FlashOnlyTableIndex = FlashOnlyTableIndex,
-                PlatformIds = [PlatformID],
-                BlockSizeInBytes = BlockSize
-            };
-
-            byte[] StoreHeaderBuffer = store.GetResultingBuffer(StoreHeaderVersion.V1, StoreHeaderUpdateType.Full, StoreHeaderCompressionAlgorithm.None);
+            byte[] ImageHeaderBuffer = ImageHeader.GetResultingBuffer(BlockSize, deviceTargetInfos.Count != 0, (uint)deviceTargetInfos.Count);
 
             using MemoryStream FFUMetadataHeaderStream = new();
 
@@ -385,13 +395,26 @@ namespace Img2Ffu
             // Image Header
             //
             Logging.Log("Writing Image Header...");
-            FFUMetadataHeaderStream.Write(ImageHeaderBuffer, 0, 0x18);
+            FFUMetadataHeaderStream.Write(ImageHeaderBuffer, 0, ImageHeaderBuffer.Length);
 
             //
             // Image Manifest
             //
             Logging.Log("Writing Image Manifest...");
             FFUMetadataHeaderStream.Write(ManifestBuffer, 0, ManifestBuffer.Length);
+
+            if (deviceTargetInfos.Count != 0)
+            {
+                //
+                // Device Target Infos...
+                //
+                Logging.Log("Writing Device Target Infos...");
+                foreach (DeviceTargetInfo deviceTargetInfo in deviceTargetInfos)
+                {
+                    byte[] deviceTargetInfoBuffer = deviceTargetInfo.GetResultingBuffer();
+                    FFUMetadataHeaderStream.Write(deviceTargetInfoBuffer, 0, deviceTargetInfoBuffer.Length);
+                }
+            }
 
             //
             // (Block Size) Padding
@@ -409,7 +432,7 @@ namespace Img2Ffu
             // Write Descriptors[0]
             //
             Logging.Log("Writing Write Descriptors...");
-            FFUMetadataHeaderStream.Write(WriteDescriptorBuffer, 0, (int)store.WriteDescriptorLength);
+            FFUMetadataHeaderStream.Write(WriteDescriptorBuffer, 0, WriteDescriptorBuffer.Length);
 
             //
             // (Block Size) Padding[0]
