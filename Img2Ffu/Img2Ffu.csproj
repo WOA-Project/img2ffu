@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<OutputType>Exe</OutputType>
+		<Platforms>AnyCPU;ARM32;ARM64;x86;x64</Platforms>
+	</PropertyGroup>
+	<ItemGroup>
+		<Content Include="provisioning-partitions.txt">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="CommandLineParser" Version="2.9.1" />
+		<PackageReference Include="DiscUtils.Core" Version="0.16.13" />
+		<PackageReference Include="DiscUtils.Streams" Version="0.16.13" />
+		<PackageReference Include="DiscUtils.Vhd" Version="0.16.13" />
+		<PackageReference Include="DiscUtils.Vhdx" Version="0.16.13" />
+	</ItemGroup>
+</Project>
