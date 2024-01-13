@@ -23,17 +23,16 @@ SOFTWARE.
 */
 using System;
 using System.IO;
-using System.Linq;
 
-namespace Img2Ffu
+namespace Img2Ffu.Streams
 {
     internal class PartialStream : Stream
     {
         private Stream innerstream;
 
         private bool disposed;
-        private long start;
-        private long end;
+        private readonly long start;
+        private readonly long end;
 
         public PartialStream(Stream stream, long StartOffset, long EndOffset)
         {
@@ -53,7 +52,7 @@ namespace Img2Ffu
         {
             innerstream.Flush();
         }
-        
+
         public override int Read(byte[] buffer, int offset, int count)
         {
             return innerstream.Read(buffer, offset, count);
@@ -62,9 +61,15 @@ namespace Img2Ffu
         public override long Seek(long offset, SeekOrigin origin)
         {
             if (origin == SeekOrigin.Begin)
+            {
                 return innerstream.Seek(offset + start, origin);
+            }
+
             if (origin == SeekOrigin.End)
+            {
                 return innerstream.Seek(end + offset, origin);
+            }
+
             return innerstream.Seek(offset, origin);
         }
 
@@ -98,11 +103,13 @@ namespace Img2Ffu
             if (!disposed)
             {
                 if (disposing)
+                {
                     if (innerstream != null)
                     {
                         innerstream.Dispose();
                         innerstream = null;
                     }
+                }
 
                 // Note disposing has been done.
                 disposed = true;

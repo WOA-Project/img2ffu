@@ -21,14 +21,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using System;
-using System.IO;
-
-namespace Img2Ffu
+namespace Img2Ffu.Data
 {
-    internal class FlashPart(Stream Stream, UInt64 StartLocation)
+    internal class ImageHeader
     {
-        public Stream Stream = Stream;
-        public UInt64 StartLocation = StartLocation;
+        public uint Size = 24;
+        public string Signature = "ImageFlash  ";
+        public uint ManifestLength;
+        public uint ChunkSize = 128;
     }
 }

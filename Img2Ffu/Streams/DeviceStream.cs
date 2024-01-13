@@ -29,7 +29,7 @@ using Microsoft.Win32.SafeHandles;
 using System.ComponentModel;
 using System.Linq;
 
-namespace Img2Ffu
+namespace Img2Ffu.Streams
 {
     public class DeviceStream : Stream
     {
@@ -104,38 +104,38 @@ namespace Img2Ffu
         }
 
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern IntPtr CreateFile(string lpFileName, uint dwDesiredAccess, uint dwShareMode, IntPtr lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile);
+        private static extern nint CreateFile(string lpFileName, uint dwDesiredAccess, uint dwShareMode, nint lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, nint hTemplateFile);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool ReadFile(IntPtr hFile, byte[] lpBuffer, int nNumberOfBytesToRead, ref int lpNumberOfBytesRead, IntPtr lpOverlapped);
+        private static extern bool ReadFile(nint hFile, byte[] lpBuffer, int nNumberOfBytesToRead, ref int lpNumberOfBytesRead, nint lpOverlapped);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool WriteFile(IntPtr hFile, byte[] lpBuffer, int nNumberOfBytesToWrite, ref int lpNumberOfBytesWritten, IntPtr lpOverlapped);
+        private static extern bool WriteFile(nint hFile, byte[] lpBuffer, int nNumberOfBytesToWrite, ref int lpNumberOfBytesWritten, nint lpOverlapped);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern uint DeviceIoControl(SafeFileHandle hDevice, uint dwIoControlCode, IntPtr lpInBuffer, uint nInBufferSize, IntPtr lpOutBuffer, int nOutBufferSize, ref uint lpBytesReturned, IntPtr lpOverlapped);
+        private static extern uint DeviceIoControl(SafeFileHandle hDevice, uint dwIoControlCode, nint lpInBuffer, uint nInBufferSize, nint lpOutBuffer, int nOutBufferSize, ref uint lpBytesReturned, nint lpOverlapped);
 
         [DllImport("kernel32.dll")]
         private static extern bool SetFilePointerEx(SafeFileHandle hFile, long liDistanceToMove, out long lpNewFilePointer, uint dwMoveMethod);
 
         private SafeFileHandle handleValue = null;
         private long _Position = 0;
-        private long _length = 0;
-        private uint _sectorsize = 0;
-        private bool _canWrite = false;
-        private bool _canRead = false;
+        private readonly long _length = 0;
+        private readonly uint _sectorsize = 0;
+        private readonly bool _canWrite = false;
+        private readonly bool _canRead = false;
         private bool disposed = false;
 
         private static uint CTL_CODE(uint DeviceType, uint Function, uint Method, uint Access)
         {
-            return (((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method));
+            return DeviceType << 16 | Access << 14 | Function << 2 | Method;
         }
 
         public DeviceStream(string device, FileAccess access)
         {
             if (string.IsNullOrEmpty(device))
             {
-                throw new ArgumentNullException("device");
+                throw new ArgumentNullException(nameof(device));
             }
 
             uint fileAccess = 0;
@@ -156,11 +156,11 @@ namespace Img2Ffu
                     break;
             }
 
-            var devicePath = @"\\.\PhysicalDrive" + device.ToLower().Replace(@"\\.\physicaldrive", "");
+            string devicePath = @"\\.\PhysicalDrive" + device.ToLower().Replace(@"\\.\physicaldrive", "");
 
             (_length, _sectorsize) = GetDiskProperties(devicePath);
 
-            IntPtr ptr = CreateFile(devicePath, fileAccess, 0, IntPtr.Zero, OPEN_EXISTING, FILE_ATTRIBUTE_DEVICE | FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH, IntPtr.Zero);
+            nint ptr = CreateFile(devicePath, fileAccess, 0, nint.Zero, OPEN_EXISTING, FILE_ATTRIBUTE_DEVICE | FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH, nint.Zero);
             handleValue = new SafeFileHandle(ptr, true);
 
             if (handleValue.IsInvalid)
@@ -169,7 +169,7 @@ namespace Img2Ffu
             }
 
             uint lpBytesReturned = 0;
-            uint result = DeviceIoControl(handleValue, FSCTL_LOCK_VOLUME, IntPtr.Zero, 0, IntPtr.Zero, 0, ref lpBytesReturned, IntPtr.Zero);
+            uint result = DeviceIoControl(handleValue, FSCTL_LOCK_VOLUME, nint.Zero, 0, nint.Zero, 0, ref lpBytesReturned, nint.Zero);
 
             if (result == 0)
             {
@@ -227,8 +227,8 @@ namespace Img2Ffu
         private int InternalRead(byte[] buffer, int offset, int count)
         {
             int BytesRead = 0;
-            var BufBytes = new byte[count];
-            if (!ReadFile(handleValue.DangerousGetHandle(), BufBytes, count, ref BytesRead, IntPtr.Zero))
+            byte[] BufBytes = new byte[count];
+            if (!ReadFile(handleValue.DangerousGetHandle(), BufBytes, count, ref BytesRead, nint.Zero))
             {
                 Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
             }
@@ -260,8 +260,8 @@ namespace Img2Ffu
                     Seek(-extrastart, SeekOrigin.Current);
                 }
 
-                var addedcount = _sectorsize - count % _sectorsize;
-                var ncount = count + addedcount;
+                long addedcount = _sectorsize - count % _sectorsize;
+                long ncount = count + addedcount;
                 byte[] tmpbuffer = new byte[extrastart + buffer.Length + addedcount];
                 buffer.CopyTo(tmpbuffer, extrastart);
                 InternalRead(tmpbuffer, offset + (int)extrastart, (int)ncount);
@@ -275,13 +275,13 @@ namespace Img2Ffu
         public override int ReadByte()
         {
             int BytesRead = 0;
-            var lpBuffer = new byte[1];
+            byte[] lpBuffer = new byte[1];
             if (!ReadFile(
             handleValue.DangerousGetHandle(),                        // handle to file
             lpBuffer,                                                // data buffer
             1,                                                       // number of bytes to read
             ref BytesRead,                                           // number of bytes read
-            IntPtr.Zero
+            nint.Zero
             ))
             { Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error()); ; }
 
@@ -293,14 +293,13 @@ namespace Img2Ffu
         public override void WriteByte(byte Byte)
         {
             int BytesWritten = 0;
-            var lpBuffer = new byte[1];
-            lpBuffer[0] = Byte;
+            byte[] lpBuffer = [Byte];
             if (!WriteFile(
             handleValue.DangerousGetHandle(),                        // handle to file
             lpBuffer,                                                // data buffer
             1,                                                       // number of bytes to write
             ref BytesWritten,                                        // number of bytes written
-            IntPtr.Zero
+            nint.Zero
             ))
             { Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error()); ; }
 
@@ -321,9 +320,11 @@ namespace Img2Ffu
                     break;
             }
 
-            long ret;
-            if (!SetFilePointerEx(handleValue, off, out ret, 0))
+            if (!SetFilePointerEx(handleValue, off, out long ret, 0))
+            {
                 return _Position;
+            }
+
             _Position = ret;
 
             return ret;
@@ -337,13 +338,13 @@ namespace Img2Ffu
         public override void Write(byte[] buffer, int offset, int count)
         {
             int BytesWritten = 0;
-            var BufBytes = new byte[count];
+            byte[] BufBytes = new byte[count];
             for (int i = 0; i < count; i++)
             {
                 BufBytes[offset + i] = buffer[i];
             }
 
-            if (!WriteFile(handleValue.DangerousGetHandle(), BufBytes, count, ref BytesWritten, IntPtr.Zero))
+            if (!WriteFile(handleValue.DangerousGetHandle(), BufBytes, count, ref BytesWritten, nint.Zero))
             {
                 Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
             }
@@ -354,10 +355,12 @@ namespace Img2Ffu
         public override void Close()
         {
             uint lpBytesReturned = 0;
-            var result = DeviceIoControl(handleValue, FSCTL_UNLOCK_VOLUME, IntPtr.Zero, 0, IntPtr.Zero, 0, ref lpBytesReturned, IntPtr.Zero);
+            uint result = DeviceIoControl(handleValue, FSCTL_UNLOCK_VOLUME, nint.Zero, 0, nint.Zero, 0, ref lpBytesReturned, nint.Zero);
 
             if (0 == result)
+            {
                 Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
+            }
 
             handleValue.Close();
             handleValue.Dispose();
@@ -375,17 +378,19 @@ namespace Img2Ffu
         private new void Dispose(bool disposing)
         {
             // Check to see if Dispose has already been called.
-            if (!this.disposed)
+            if (!disposed)
             {
                 if (disposing)
                 {
                     if (handleValue != null)
                     {
                         uint lpBytesReturned = 0;
-                        var result = DeviceIoControl(handleValue, FSCTL_UNLOCK_VOLUME, IntPtr.Zero, 0, IntPtr.Zero, 0, ref lpBytesReturned, IntPtr.Zero);
+                        uint result = DeviceIoControl(handleValue, FSCTL_UNLOCK_VOLUME, nint.Zero, 0, nint.Zero, 0, ref lpBytesReturned, nint.Zero);
 
                         if (0 == result)
+                        {
                             Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
+                        }
 
                         handleValue.Close();
                         handleValue.Dispose();
@@ -399,28 +404,32 @@ namespace Img2Ffu
 
         private static (long, uint) GetDiskProperties(string deviceName)
         {
-            var x = new DISK_GEOMETRY_EX();
+            DISK_GEOMETRY_EX x = new();
             Execute(ref x, DISK_GET_DRIVE_GEOMETRY_EX, deviceName);
             return (x.DiskSize, x.Geometry.BytesPerSector);
         }
 
-        private static void Execute<T>(ref T x, uint dwIoControlCode, string lpFileName, uint dwDesiredAccess = GENERIC_READ, uint dwShareMode = FILE_SHARE_WRITE | FILE_SHARE_READ, IntPtr lpSecurityAttributes = default(IntPtr), uint dwCreationDisposition = OPEN_EXISTING, uint dwFlagsAndAttributes = 0, IntPtr hTemplateFile = default(IntPtr))
+        private static void Execute<T>(ref T x, uint dwIoControlCode, string lpFileName, uint dwDesiredAccess = GENERIC_READ, uint dwShareMode = FILE_SHARE_WRITE | FILE_SHARE_READ, nint lpSecurityAttributes = default, uint dwCreationDisposition = OPEN_EXISTING, uint dwFlagsAndAttributes = 0, nint hTemplateFile = default)
         {
-            var hDevice = CreateFile(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+            nint hDevice = CreateFile(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 
-            var handleValue = new SafeFileHandle(hDevice, true);
+            SafeFileHandle handleValue = new(hDevice, true);
 
             if (null == hDevice || handleValue.IsInvalid)
+            {
                 throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
 
-            var nOutBufferSize = Marshal.SizeOf(typeof(T));
-            var lpOutBuffer = Marshal.AllocHGlobal(nOutBufferSize);
-            var lpBytesReturned = default(uint);
+            int nOutBufferSize = Marshal.SizeOf(typeof(T));
+            nint lpOutBuffer = Marshal.AllocHGlobal(nOutBufferSize);
+            uint lpBytesReturned = default;
 
-            var result = DeviceIoControl(handleValue, dwIoControlCode, IntPtr.Zero, 0, lpOutBuffer, nOutBufferSize, ref lpBytesReturned, IntPtr.Zero);
+            uint result = DeviceIoControl(handleValue, dwIoControlCode, nint.Zero, 0, lpOutBuffer, nOutBufferSize, ref lpBytesReturned, nint.Zero);
 
             if (result == 0)
+            {
                 throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
 
             x = (T)Marshal.PtrToStructure(lpOutBuffer, typeof(T));
             Marshal.FreeHGlobal(lpOutBuffer);

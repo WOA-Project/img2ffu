@@ -22,12 +22,8 @@ SOFTWARE.
 
 */
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Img2Ffu
+namespace Img2Ffu.Helpers
 {
     internal class Logging
     {
@@ -38,7 +34,7 @@ namespace Img2Ffu
             Error
         }
 
-        private static readonly object lockObj = new object();
+        private static readonly object lockObj = new();
 
         public static void Log(string message, LoggingLevel severity = LoggingLevel.Information, bool returnline = true)
         {
@@ -50,7 +46,7 @@ namespace Img2Ffu
                     return;
                 }
 
-                var msg = "";
+                string msg = "";
 
                 switch (severity)
                 {
@@ -69,9 +65,13 @@ namespace Img2Ffu
                 }
 
                 if (returnline)
+                {
                     Console.WriteLine(DateTime.Now.ToString("'['HH':'mm':'ss']'") + "[" + msg + "] " + message);
+                }
                 else
+                {
                     Console.Write("\r" + DateTime.Now.ToString("'['HH':'mm':'ss']'") + "[" + msg + "] " + message);
+                }
 
                 Console.ForegroundColor = ConsoleColor.White;
             }

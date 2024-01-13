@@ -21,15 +21,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using System;
+using Img2Ffu.Data;
 
-namespace Img2Ffu
+namespace Img2Ffu.Flashing
 {
-    internal class ImageHeader
+    public class FlashingPayload(byte[][] ChunkHashes, WriteDescriptor[] WriteDescriptors, uint[] StreamIndexes, long[] StreamLocations)
     {
-        public UInt32 Size = 24;
-        public string Signature = "ImageFlash  ";
-        public UInt32 ManifestLength;
-        public UInt32 ChunkSize = 128;
+        public byte[][] ChunkHashes = ChunkHashes;
+        public WriteDescriptor[] WriteDescriptors = WriteDescriptors;
+        public uint[] StreamIndexes = StreamIndexes;
+        public long[] StreamLocations = StreamLocations;
     }
 }

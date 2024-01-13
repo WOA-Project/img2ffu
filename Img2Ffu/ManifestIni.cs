@@ -32,15 +32,29 @@ namespace Img2Ffu
         {
             string Manifest = "[FullFlash]\r\n";
             if (!string.IsNullOrEmpty(fullFlash.AntiTheftVersion))
+            {
                 Manifest += "AntiTheftVersion  = " + fullFlash.AntiTheftVersion + "\r\n";
+            }
+
             if (!string.IsNullOrEmpty(fullFlash.OSVersion))
+            {
                 Manifest += "OSVersion         = " + fullFlash.OSVersion + "\r\n";
+            }
+
             if (!string.IsNullOrEmpty(fullFlash.Description))
+            {
                 Manifest += "Description       = " + fullFlash.Description + "\r\n";
+            }
+
             if (!string.IsNullOrEmpty(fullFlash.Version))
+            {
                 Manifest += "Version           = " + fullFlash.Version + "\r\n";
+            }
+
             if (!string.IsNullOrEmpty(fullFlash.DevicePlatformId0))
+            {
                 Manifest += "DevicePlatformId0 = " + fullFlash.DevicePlatformId0 + "\r\n";
+            }
 
             Manifest += "\r\n[Store]\r\n";
             Manifest += "SectorSize     = " + store.SectorSize + "\r\n";
@@ -51,23 +65,47 @@ namespace Img2Ffu
             {
                 Manifest += "[Partition]\r\n";
                 if (partition.RequiredToFlash.HasValue)
+                {
                     Manifest += "RequiredToFlash = " + (partition.RequiredToFlash.Value ? "True" : "False") + "\r\n";
+                }
+
                 if (!string.IsNullOrEmpty(partition.Name))
+                {
                     Manifest += "Name            = " + partition.Name + "\r\n";
+                }
+
                 Manifest += "UsedSectors     = " + partition.UsedSectors + "\r\n";
                 if (partition.Type != null)
+                {
                     Manifest += "Type            = " + partition.Type + "\r\n";
+                }
+
                 Manifest += "TotalSectors    = " + partition.TotalSectors + "\r\n";
                 if (!string.IsNullOrEmpty(partition.Primary))
+                {
                     Manifest += "Primary         = " + partition.Primary + "\r\n";
+                }
+
                 if (!string.IsNullOrEmpty(partition.FileSystem))
+                {
                     Manifest += "FileSystem      = " + partition.FileSystem + "\r\n";
+                }
+
                 if (partition.ByteAlignment.HasValue)
+                {
                     Manifest += "ByteAlignment   = " + partition.ByteAlignment.Value + "\r\n";
+                }
+
                 if (partition.ClusterSize.HasValue)
+                {
                     Manifest += "ClusterSize     = " + partition.ClusterSize.Value + "\r\n";
+                }
+
                 if (partition.UseAllSpace.HasValue)
+                {
                     Manifest += "UseAllSpace     = " + (partition.UseAllSpace.Value ? "True" : "False") + "\r\n";
+                }
+
                 Manifest += "\r\n";
             }
 
@@ -76,10 +114,10 @@ namespace Img2Ffu
 
         internal static List<Partition> GPTPartitionsToPartitions(List<GPT.Partition> partitions)
         {
-            List<Partition> Parts = new List<Partition>();
+            List<Partition> Parts = [];
 
             // TODO: implement more
-            foreach (var part in partitions)
+            foreach (GPT.Partition part in partitions)
             {
                 Parts.Add(new Partition() { Name = part.Name, TotalSectors = (uint)part.SizeInSectors, UsedSectors = (uint)part.SizeInSectors, RequiredToFlash = true });
             }

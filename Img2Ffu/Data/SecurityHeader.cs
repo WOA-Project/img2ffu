@@ -21,17 +21,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using System;
-
-namespace Img2Ffu
+namespace Img2Ffu.Data
 {
     public class SecurityHeader
     {
-        public UInt32 Size = 32;
+        public uint Size = 0x20;
         public string Signature = "SignedImage ";
-        public UInt32 ChunkSizeInKb = 128;
-        public UInt32 HashAlgorithm = 32780; // SHA256 algorithm id
-        public UInt32 CatalogSize;
-        public UInt32 HashTableSize;
+        public uint ChunkSizeInKb = 0x80;
+        public uint HashAlgorithm = 0x800C; // SHA256 algorithm id
+        public uint CatalogSize;
+        public uint HashTableSize;
     }
 }
