@@ -345,7 +345,7 @@ namespace Img2Ffu
 
         private static void GenerateFFU(string InputFile, string FFUFile, string PlatformID, uint SectorSize, uint BlockSize, string AntiTheftVersion, string OperatingSystemVersion, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed)
         {
-            if (File.Exists(InputFile))
+            if (File.Exists(FFUFile))
             {
                 Logging.Log("File already exists!", Logging.LoggingLevel.Error);
                 return;
