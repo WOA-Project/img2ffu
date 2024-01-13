@@ -32,7 +32,7 @@ namespace Img2Ffu.Data
         public byte[] GetResultingBuffer(uint ChunkSize, bool HasDeviceTargetInfo, uint DeviceTargetInfosCount)
         {
             using MemoryStream ImageHeaderStream = new();
-            BinaryWriter binaryWriter = new(ImageHeaderStream);
+            using BinaryWriter binaryWriter = new(ImageHeaderStream);
 
             binaryWriter.Write(HasDeviceTargetInfo ? 28u : 24u); // Size
             binaryWriter.Write("ImageFlash  "); // Signature

@@ -37,9 +37,15 @@ namespace Img2Ffu.Flashing
             DateTime now = DateTime.Now;
             TimeSpan timeSoFar = now - startTime;
 
-            TimeSpan remaining = TimeSpan.FromMilliseconds(timeSoFar.TotalMilliseconds / CurrentProgress * (TotalProgress - CurrentProgress));
+            double milliseconds = timeSoFar.TotalMilliseconds / CurrentProgress * (TotalProgress - CurrentProgress);
+            double ticks = milliseconds * TimeSpan.TicksPerMillisecond;
+            if ((ticks > long.MaxValue) || (ticks < long.MinValue) || double.IsNaN(ticks))
+            {
+                milliseconds = 0;
+            }
+            TimeSpan remaining = TimeSpan.FromMilliseconds(milliseconds);
 
-            Logging.Log(string.Format($"{GetDismLikeProgBar(int.Parse((CurrentProgress * 100 / TotalProgress).ToString()))} {remaining.TotalHours}:{remaining.Minutes}:{remaining.Seconds}.{remaining.Milliseconds}"), returnline: false, severity: DisplayRed ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
+            Logging.Log(string.Format($"{GetDismLikeProgBar(int.Parse((CurrentProgress * 100 / TotalProgress).ToString()))} {Math.Truncate(remaining.TotalHours):00}:{remaining.Minutes:00}:{remaining.Seconds:00}.{remaining.Milliseconds:000}"), returnline: false, severity: DisplayRed ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
         }
 
         private static string GetDismLikeProgBar(int perc)

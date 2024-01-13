@@ -123,7 +123,7 @@ namespace Img2Ffu.Data
             FinalTableIndex = WriteDescriptorCount - FinalTableCount;
 
             using MemoryStream StoreHeaderStream = new();
-            BinaryWriter binaryWriter = new(StoreHeaderStream);
+            using BinaryWriter binaryWriter = new(StoreHeaderStream);
 
             binaryWriter.Write(UpdateType);
             binaryWriter.Write(MajorVersion);

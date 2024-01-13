@@ -33,6 +33,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Xml.Linq;
 
 namespace Img2Ffu
 {
@@ -96,7 +97,7 @@ namespace Img2Ffu
         private static byte[] GetWriteDescriptorsBuffer(IEnumerable<BlockPayload> payloads, FlashUpdateVersion storeHeaderVersion)
         {
             using MemoryStream WriteDescriptorsStream = new();
-            BinaryWriter binaryWriter = new(WriteDescriptorsStream);
+            using BinaryWriter binaryWriter = new(WriteDescriptorsStream);
 
             foreach (BlockPayload payload in payloads)
             {
@@ -116,7 +117,7 @@ namespace Img2Ffu
             FFUMetadataHeaderTempFileStream.Seek(0, SeekOrigin.Begin);
 
             using MemoryStream HashTableStream = new MemoryStream();
-            BinaryWriter binaryWriter = new(HashTableStream);
+            using BinaryWriter binaryWriter = new(HashTableStream);
 
             for (int i = 0; i < FFUMetadataHeaderTempFileStream.Length / BlockSize; i++)
             {
@@ -130,8 +131,6 @@ namespace Img2Ffu
             {
                 binaryWriter.Write(payload.ChunkHash, 0, payload.ChunkHash.Length);
             }
-
-            binaryWriter.Close();
 
             byte[] HashTableBuffer = new byte[HashTableStream.Length];
             HashTableStream.Seek(0, SeekOrigin.Begin);
@@ -283,7 +282,7 @@ namespace Img2Ffu
             return 0;
         }
 
-        private static (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, IOrderedEnumerable<BlockPayload> BlockPayloads, FlashPart[] flashParts, VirtualDisk InputDisk) GenerateStore(string InputFile, string PlatformID, uint SectorSize, uint BlockSize, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion FlashUpdateVersion)
+        private static (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, IOrderedEnumerable<BlockPayload> BlockPayloads, FlashPart[] flashParts, VirtualDisk InputDisk) GenerateStore(string InputFile, string[] PlatformIDs, uint SectorSize, uint BlockSize, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion FlashUpdateVersion)
         {
             Logging.Log("Opening input file...");
 
@@ -322,7 +321,7 @@ namespace Img2Ffu
             (FlashPart[] flashParts, ulong EndOfPLATPartition, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(InputStream, BlockSize, ExcludedPartitionNames, SectorSize);
 
             Logging.Log("Generating Block Payloads...");
-            IOrderedEnumerable<BlockPayload> BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts, BlockSize, MaximumNumberOfBlankBlocksAllowed).OrderBy(x => x.WriteDescriptor);
+            IOrderedEnumerable<BlockPayload> BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts, BlockSize, MaximumNumberOfBlankBlocksAllowed).OrderBy(x => x.WriteDescriptor.DiskLocations[0].BlockIndex);
 
             Logging.Log("Generating write descriptors...");
             byte[] WriteDescriptorBuffer = GetWriteDescriptorsBuffer(BlockPayloads, FlashUpdateVersion);
@@ -333,8 +332,8 @@ namespace Img2Ffu
                 WriteDescriptorCount = (uint)BlockPayloads.Count(),
                 WriteDescriptorLength = (uint)WriteDescriptorBuffer.Length,
                 FlashOnlyTableIndex = GetFlashOnlyTableIndex(BlockPayloads, EndOfPLATPartition),
-                PlatformIds = [PlatformID],
                 BlockSize = BlockSize
+                PlatformIds = PlatformIDs,
             };
 
             byte[] StoreHeaderBuffer = store.GetResultingBuffer(FlashUpdateVersion, FlashUpdateType.Full, CompressionAlgorithm.None);
@@ -346,8 +345,15 @@ namespace Img2Ffu
 
         private static void GenerateFFU(string InputFile, string FFUFile, string PlatformID, uint SectorSize, uint BlockSize, string AntiTheftVersion, string OperatingSystemVersion, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed)
         {
+            if (File.Exists(InputFile))
+            {
+                Logging.Log("File already exists!", Logging.LoggingLevel.Error);
+                return;
+            }
+
             FlashUpdateVersion FlashUpdateVersion = FlashUpdateVersion.V1;
             List<DeviceTargetInfo> deviceTargetInfos = [];
+            string[] PlatformIDs = [PlatformID];
 
             Logging.Log($"Input image: {InputFile}");
             Logging.Log($"Destination image: {FFUFile}");
@@ -358,7 +364,7 @@ namespace Img2Ffu
             Logging.Log($"OS Version: {OperatingSystemVersion}");
             Logging.Log("");
 
-            (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, IOrderedEnumerable<BlockPayload> BlockPayloads, FlashPart[] flashParts, VirtualDisk InputDisk) = GenerateStore(InputFile, PlatformID, SectorSize, BlockSize, ExcludedPartitionNames, MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion);
+            (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, IOrderedEnumerable<BlockPayload> BlockPayloads, FlashPart[] flashParts, VirtualDisk InputDisk) = GenerateStore(InputFile, PlatformIDs, SectorSize, BlockSize, ExcludedPartitionNames, MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion);
 
             // Todo make this read the image itself
             Logging.Log("Generating full flash manifest...");
@@ -558,16 +564,22 @@ namespace Img2Ffu
             }
         }
 
-        private static void ShowProgress(ulong totalBytes, DateTime startTime, ulong BytesRead, ulong SourcePosition)
+        private static void ShowProgress(ulong TotalBytes, DateTime startTime, ulong BytesRead, ulong SourcePosition)
         {
             DateTime now = DateTime.Now;
             TimeSpan timeSoFar = now - startTime;
 
-            TimeSpan remaining = TimeSpan.FromMilliseconds(timeSoFar.TotalMilliseconds / BytesRead * (totalBytes - BytesRead));
+            double milliseconds = timeSoFar.TotalMilliseconds / BytesRead * (TotalBytes - BytesRead);
+            double ticks = milliseconds * TimeSpan.TicksPerMillisecond;
+            if ((ticks > long.MaxValue) || (ticks < long.MinValue) || double.IsNaN(ticks))
+            {
+                milliseconds = 0;
+            }
+            TimeSpan remaining = TimeSpan.FromMilliseconds(milliseconds);
 
             double speed = Math.Round(SourcePosition / 1024L / 1024L / timeSoFar.TotalSeconds);
 
-            Logging.Log(string.Format($"{GetDismLikeProgBar(int.Parse((BytesRead * 100 / totalBytes).ToString()))} {speed}MB/s {remaining.TotalHours}:{remaining.Minutes}:{remaining.Seconds}.{remaining.Milliseconds}"), returnline: false, severity: Logging.LoggingLevel.Information);
+            Logging.Log(string.Format($"{GetDismLikeProgBar(int.Parse((BytesRead * 100 / TotalBytes).ToString()))} {speed}MB/s {Math.Truncate(remaining.TotalHours):00}:{remaining.Minutes:00}:{remaining.Seconds:00}.{remaining.Milliseconds:000}"), returnline: false, severity: Logging.LoggingLevel.Information);
         }
 
         private static string GetDismLikeProgBar(int perc)

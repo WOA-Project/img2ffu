@@ -38,7 +38,7 @@ namespace Img2Ffu.Data
         public byte[] GetResultingBuffer(uint ChunkSize)
         {
             using MemoryStream SecurityHeaderStream = new();
-            BinaryWriter binaryWriter = new(SecurityHeaderStream);
+            using BinaryWriter binaryWriter = new(SecurityHeaderStream);
 
             ChunkSizeInKb = ChunkSize / 0x400;
 

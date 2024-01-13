@@ -36,7 +36,7 @@ namespace Img2Ffu.Data
         public byte[] GetResultingBuffer()
         {
             using MemoryStream DeviceTargetInfoStream = new();
-            BinaryWriter binaryWriter = new(DeviceTargetInfoStream);
+            using BinaryWriter binaryWriter = new(DeviceTargetInfoStream);
 
             ManufacturerLength = (uint)Manufacturer.Length;
             FamilyLength = (uint)Family.Length;
