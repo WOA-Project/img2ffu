@@ -10,7 +10,7 @@ namespace Img2Ffu.Data
         public byte[] GetResultingBuffer(FlashUpdateVersion storeHeaderVersion)
         {
             using MemoryStream WriteDescriptorStream = new();
-            BinaryWriter binaryWriter = new(WriteDescriptorStream);
+            using BinaryWriter binaryWriter = new(WriteDescriptorStream);
 
             BlockDataEntry.LocationCount = (uint)DiskLocations.Length;
 

@@ -92,7 +92,7 @@ namespace Img2Ffu.Data
                     FullFlashMinorVersion = 0;
                     UnicodeEncoding UnicodeEncoding = new();
                     DevicePathBuffer = UnicodeEncoding.GetBytes(DevicePath.ToCharArray());
-                    DevicePathLength = (ushort)DevicePathBuffer.Length;
+                    DevicePathLength = (ushort)DevicePath.Length;
                     break;
             }
 
