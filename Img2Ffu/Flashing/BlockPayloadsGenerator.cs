@@ -33,7 +33,7 @@ namespace Img2Ffu.Flashing
 {
     internal class BlockPayloadsGenerator
     {
-        private static void ShowProgress(long CurrentProgress, long TotalProgress, DateTime startTime)
+        private static void ShowProgress(ulong CurrentProgress, ulong TotalProgress, DateTime startTime)
         {
             DateTime now = DateTime.Now;
             TimeSpan timeSoFar = now - startTime;
@@ -68,10 +68,14 @@ namespace Img2Ffu.Flashing
 
         private static readonly byte[] EMPTY_BLOCK_HASH = [0xFA, 0x43, 0x23, 0x9B, 0xCE, 0xE7, 0xB9, 0x7C, 0xA6, 0x2F, 0x00, 0x7C, 0xC6, 0x84, 0x87, 0x56, 0x0A, 0x39, 0xE1, 0x9F, 0x74, 0xF3, 0xDD, 0xE7, 0x48, 0x6D, 0xB3, 0xF9, 0x8D, 0xF8, 0xE4, 0x71];
 
-        internal static Dictionary<ByteArrayKey, List<ulong>> GetHashedBlocks(FlashPart[] flashParts, uint BlockSize)
+        internal static KeyValuePair<ByteArrayKey, List<ulong>>[] GetHashedBlocks(FlashPart[] flashParts, uint BlockSize)
         {
-            long CurrentBlockCount = 0;
-            long TotalBlockCount = flashParts.Sum(x => x.Stream.Length / BlockSize);
+            ulong CurrentBlockCount = 0;
+            ulong TotalBlockCount = 0;
+            foreach (FlashPart flashPart in flashParts)
+            {
+                TotalBlockCount += (ulong)flashPart.Stream.Length / BlockSize;
+            }
             Dictionary<ByteArrayKey, List<ulong>> hashedBlocks = [];
             DateTime startTime = DateTime.Now;
 
@@ -86,6 +90,12 @@ namespace Img2Ffu.Flashing
 
                     ulong FlashPartStartBlockIndex = flashPart.StartLocation / BlockSize;
                     ulong FlashPartBlockCount = (ulong)flashPart.Stream.Length / BlockSize;
+
+                    Console.WriteLine("");
+                    Console.WriteLine("============================");
+                    Console.WriteLine(FlashPartStartBlockIndex);
+                    Console.WriteLine(FlashPartBlockCount);
+                    Console.WriteLine("============================");
 
                     for (uint FlashPartBlockIndex = 0; FlashPartBlockIndex < FlashPartBlockCount; FlashPartBlockIndex++)
                     {
@@ -114,25 +124,25 @@ namespace Img2Ffu.Flashing
             Logging.Log("");
             Logging.Log($"FFU Block Count: {hashedBlocks.Count} - {hashedBlocks.Count * BlockSize / (1024 * 1024 * 1024)}GB");
 
-            return hashedBlocks;
+            return [.. hashedBlocks];
         }
 
-        internal static Dictionary<ByteArrayKey, BlockPayload> GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, ulong MaximumNumberOfBlankBlocksAllowed)
+        internal static KeyValuePair<ByteArrayKey, BlockPayload>[] GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, ulong MaximumNumberOfBlankBlocksAllowed)
         {
-            Dictionary<ByteArrayKey, BlockPayload> blockPayloads = [];
+            List<KeyValuePair<ByteArrayKey, BlockPayload>> blockPayloads = [];
 
             if (flashParts == null)
             {
-                return blockPayloads;
+                return [.. blockPayloads];
             }
 
-            Dictionary<ByteArrayKey, List<ulong>> hashedBlocks = GetHashedBlocks(flashParts, BlockSize);
+            KeyValuePair<ByteArrayKey, List<ulong>>[] hashedBlocks = GetHashedBlocks(flashParts, BlockSize);
 
             Logging.Log("Building resource payloads...");
 
             foreach (KeyValuePair<ByteArrayKey, List<ulong>> hashedBlock in hashedBlocks)
             {
-                if (hashedBlock.Value.Count > 1)
+                if (hashedBlock.Value.Count > 0)
                 {
                     DiskLocation[] diskLocations = hashedBlock.Value.Select(DiskBlockIndex => new DiskLocation() { BlockIndex = (uint)DiskBlockIndex, DiskAccessMethod = 0 }).ToArray();
 
@@ -146,6 +156,7 @@ namespace Img2Ffu.Flashing
                         DiskLocations = diskLocations
                     };
 
+                    bool found = false;
                     for (ulong flashPartIndex = 0; flashPartIndex < (ulong)flashParts.LongLength; flashPartIndex++)
                     {
                         FlashPart flashPart = flashParts[flashPartIndex];
@@ -158,14 +169,21 @@ namespace Img2Ffu.Flashing
                         if (FlashPartStartBlockIndex <= DiskBlockIndex && DiskBlockIndex <= FlashPartEndBlockIndex)
                         {
                             ulong streamLocation = (DiskBlockIndex - FlashPartStartBlockIndex) * BlockSize;
-                            blockPayloads.Add(hashedBlock.Key, new BlockPayload(writeDescriptor, flashPartIndex, streamLocation));
+
+                            blockPayloads.Add(new(hashedBlock.Key, new BlockPayload(writeDescriptor, flashPartIndex, streamLocation)));
+                            found = true;
                             break;
                         }
+                    }
+
+                    if (!found)
+                    {
+                        throw new Exception("Could not find flash part for block");
                     }
                 }
             }
 
-            return blockPayloads;
+            return [.. blockPayloads];
         }
     }
 }

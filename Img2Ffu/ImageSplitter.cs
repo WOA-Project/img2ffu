@@ -182,8 +182,6 @@ namespace Img2Ffu
             {
                 if (currentFlashPart != null)
                 {
-                    currentFlashPart.Stream = new PartialStream(stream, (long)currentFlashPart.StartLocation, stream.Length);
-
                     ulong totalSectors = (ulong)currentFlashPart.Stream.Length / sectorSize;
                     ulong firstSector = currentFlashPart.StartLocation / sectorSize;
                     ulong lastSector = firstSector + totalSectors - 1;
