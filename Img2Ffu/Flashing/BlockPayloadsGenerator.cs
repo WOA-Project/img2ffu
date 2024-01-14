@@ -188,7 +188,6 @@ namespace Img2Ffu.Flashing
                             break;
                         }
                     }
-
                 }
             }
 
