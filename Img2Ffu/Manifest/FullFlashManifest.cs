@@ -31,6 +31,9 @@ namespace Img2Ffu.Manifest
         public string OSVersion;
         public string Description = "Update on: " + DateTime.Now.ToString("u") + "::\r\n";
         public string Version = "2.0";
+        public string DevicePlatformId3;
+        public string DevicePlatformId2;
+        public string DevicePlatformId1;
         public string DevicePlatformId0;
     }
 }

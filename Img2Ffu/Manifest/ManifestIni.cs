@@ -53,12 +53,32 @@ namespace Img2Ffu.Manifest
                 Manifest += $"Version           = {fullFlash.Version}\r\n";
             }
 
+            if (!string.IsNullOrEmpty(fullFlash.DevicePlatformId3))
+            {
+                Manifest += $"DevicePlatformId3 = {fullFlash.DevicePlatformId3}\r\n";
+            }
+
+            if (!string.IsNullOrEmpty(fullFlash.DevicePlatformId2))
+            {
+                Manifest += $"DevicePlatformId2 = {fullFlash.DevicePlatformId2}\r\n";
+            }
+
+            if (!string.IsNullOrEmpty(fullFlash.DevicePlatformId1))
+            {
+                Manifest += $"DevicePlatformId1 = {fullFlash.DevicePlatformId1}\r\n";
+            }
+
             if (!string.IsNullOrEmpty(fullFlash.DevicePlatformId0))
             {
                 Manifest += $"DevicePlatformId0 = {fullFlash.DevicePlatformId0}\r\n";
             }
 
             Manifest += "\r\n[Store]\r\n";
+            Manifest += $"OnlyAllocateDefinedGptEntries = False\r\n";
+            Manifest += $"StoreId                       = {{5a585bae-900b-41b5-b736-a4cecffc34b4}}\r\n";
+            Manifest += $"IsMainOSStore                 = False\r\n";
+            Manifest += $"DevicePath                    = VenHw(860845C1-BE09-4355-8BC1-30D64FF8E63A)\r\n";
+            Manifest += $"StoreType                     = Default\r\n";
             Manifest += $"MinSectorCount                = {store.MinSectorCount}\r\n";
             Manifest += $"SectorSize                    = {store.SectorSize}\r\n";
             Manifest += "\r\n";
@@ -66,26 +86,10 @@ namespace Img2Ffu.Manifest
             foreach (PartitionManifest partition in partitions)
             {
                 Manifest += "[Partition]\r\n";
-                if (partition.RequiredToFlash.HasValue)
-                {
-                    Manifest += $"RequiredToFlash = {(partition.RequiredToFlash.Value ? "True" : "False")}\r\n";
-                }
 
-                if (!string.IsNullOrEmpty(partition.Name))
+                if (partition.ByteAlignment.HasValue)
                 {
-                    Manifest += $"Name            = {partition.Name}\r\n";
-                }
-
-                Manifest += $"UsedSectors     = {partition.UsedSectors}\r\n";
-                if (partition.Type != null)
-                {
-                    Manifest += $"Type            = {partition.Type}\r\n";
-                }
-
-                Manifest += $"TotalSectors    = {partition.TotalSectors}\r\n";
-                if (!string.IsNullOrEmpty(partition.Primary))
-                {
-                    Manifest += $"Primary         = {partition.Primary}\r\n";
+                    Manifest += $"ByteAlignment   = {partition.ByteAlignment.Value}\r\n";
                 }
 
                 if (!string.IsNullOrEmpty(partition.FileSystem))
@@ -93,19 +97,38 @@ namespace Img2Ffu.Manifest
                     Manifest += $"FileSystem      = {partition.FileSystem}\r\n";
                 }
 
-                if (partition.ByteAlignment.HasValue)
+                Manifest += $"UsedSectors     = {partition.UsedSectors}\r\n";
+
+                if (partition.UseAllSpace.HasValue)
                 {
-                    Manifest += $"ByteAlignment   = {partition.ByteAlignment.Value}\r\n";
+                    Manifest += $"UseAllSpace     = {(partition.UseAllSpace.Value ? "True" : "False")}\r\n";
+                }
+
+                if (partition.Type != null)
+                {
+                    Manifest += $"Type            = {partition.Type}\r\n";
+                }
+
+                Manifest += $"TotalSectors    = {partition.TotalSectors}\r\n";
+
+                if (partition.RequiredToFlash.HasValue)
+                {
+                    Manifest += $"RequiredToFlash = {(partition.RequiredToFlash.Value ? "True" : "False")}\r\n";
+                }
+
+                if (!string.IsNullOrEmpty(partition.Primary))
+                {
+                    Manifest += $"Primary         = {partition.Primary}\r\n";
+                }
+
+                if (!string.IsNullOrEmpty(partition.Name))
+                {
+                    Manifest += $"Name            = {partition.Name}\r\n";
                 }
 
                 if (partition.ClusterSize.HasValue)
                 {
                     Manifest += $"ClusterSize     = {partition.ClusterSize.Value}\r\n";
-                }
-
-                if (partition.UseAllSpace.HasValue)
-                {
-                    Manifest += $"UseAllSpace     = {(partition.UseAllSpace.Value ? "True" : "False")}\r\n";
                 }
 
                 Manifest += "\r\n";

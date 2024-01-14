@@ -312,6 +312,13 @@ namespace Img2Ffu
                 WriteDescriptorLength = (uint)WriteDescriptorBuffer.Length,
                 PlatformIds = PlatformIDs,
                 BlockSize = BlockSize,
+
+                // POC Begins
+                NumberOfStores = 1,
+                StoreIndex = 1,
+                DevicePath = "VenHw(860845C1-BE09-4355-8BC1-30D64FF8E63A)",
+                StorePayloadSize = (ulong)BlockPayloads.Count * BlockSize // TODO: Verify this!
+                // POC Ends
             };
 
             byte[] StoreHeaderBuffer = store.GetResultingBuffer(FlashUpdateVersion, FlashUpdateType.Full, CompressionAlgorithm.None);
@@ -329,9 +336,20 @@ namespace Img2Ffu
                 return;
             }
 
-            FlashUpdateVersion FlashUpdateVersion = FlashUpdateVersion.V1;
+            //FlashUpdateVersion FlashUpdateVersion = FlashUpdateVersion.V1;
             List<DeviceTargetInfo> deviceTargetInfos = [];
-            string[] PlatformIDs = [PlatformID];
+            //string[] PlatformIDs = [PlatformID];
+
+            // POC Begins
+            FlashUpdateVersion FlashUpdateVersion = FlashUpdateVersion.V2;
+            string[] PlatformIDs =
+            [
+                "Microsoft Corporation.Surface.Surface Duo.1930",
+                "OEMB1.*.OEMB1 Product.*",
+                "OEMEP.*.OEMEP Product.*"
+            ];
+            SectorSize = 4096;
+            // POC Ends
 
             Logging.Log($"Input image: {InputFile}");
             Logging.Log($"Destination image: {FFUFile}");
@@ -349,7 +367,9 @@ namespace Img2Ffu
             FullFlashManifest FullFlash = new()
             {
                 OSVersion = OperatingSystemVersion,
-                DevicePlatformId0 = PlatformID,
+                DevicePlatformId2 = PlatformIDs[2],
+                DevicePlatformId1 = PlatformIDs[1],
+                DevicePlatformId0 = PlatformIDs[0],
                 AntiTheftVersion = AntiTheftVersion
             };
 
