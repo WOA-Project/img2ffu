@@ -27,7 +27,7 @@ namespace Img2Ffu
 {
     public partial class GPT
     {
-        private byte[] GPTBuffer;
+        public byte[] GPTBuffer;
         private readonly uint HeaderOffset;
         private readonly uint HeaderSize;
         private uint TableOffset;

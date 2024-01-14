@@ -193,7 +193,7 @@ namespace Img2Ffu
 
             Logging.Log("");
             Logging.Log("Inserting GPT back into the FFU image");
-            flashParts.Insert(0, new FlashPart(new MemoryStream(GPTBuffer), 0));
+            flashParts.Insert(0, new FlashPart(new MemoryStream(GPT.GPTBuffer), 0));
 
             Logging.Log("");
             Logging.Log("Final Flash Parts");
