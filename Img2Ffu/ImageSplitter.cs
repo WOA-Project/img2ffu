@@ -90,8 +90,8 @@ namespace Img2Ffu
                 }
 
                 string outputString = (isExcluded ? "*" : "") + partition.Name + new string(' ', 50);
-                outputString = outputString.Insert(25, " - " + partition.FirstSector);
-                outputString = outputString.Insert(40, " - " + partition.LastSector);
+                outputString = outputString.Insert(25, $" - {partition.FirstSector}");
+                outputString = outputString.Insert(40, $" - {partition.LastSector}");
                 Logging.Log(outputString, isExcluded ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
 
                 if (isExcluded)
@@ -151,7 +151,7 @@ namespace Img2Ffu
             }
 
             Logging.Log("");
-            Logging.Log("Plat end: " + EndOfPLATPartition);
+            Logging.Log($"Plat end: {EndOfPLATPartition}");
 
             Logging.Log("");
             Logging.Log("Inserting GPT back into the FFU image");

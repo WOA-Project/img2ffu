@@ -94,7 +94,7 @@ namespace Img2Ffu
             return catalog;
         }
 
-        private static byte[] GetWriteDescriptorsBuffer(IEnumerable<BlockPayload> payloads, FlashUpdateVersion storeHeaderVersion)
+        private static byte[] GetWriteDescriptorsBuffer(IOrderedEnumerable<BlockPayload> payloads, FlashUpdateVersion storeHeaderVersion)
         {
             using MemoryStream WriteDescriptorsStream = new();
             using BinaryWriter binaryWriter = new(WriteDescriptorsStream);
@@ -332,8 +332,8 @@ namespace Img2Ffu
                 WriteDescriptorCount = (uint)BlockPayloads.Count(),
                 WriteDescriptorLength = (uint)WriteDescriptorBuffer.Length,
                 FlashOnlyTableIndex = GetFlashOnlyTableIndex(BlockPayloads, EndOfPLATPartition),
-                BlockSize = BlockSize
                 PlatformIds = PlatformIDs,
+                BlockSize = BlockSize,
             };
 
             byte[] StoreHeaderBuffer = store.GetResultingBuffer(FlashUpdateVersion, FlashUpdateType.Full, CompressionAlgorithm.None);
@@ -524,10 +524,10 @@ namespace Img2Ffu
             for (ulong CurrentBlockIndex = 0; CurrentBlockIndex < (ulong)BlockPayloads.Count(); CurrentBlockIndex++)
             {
                 BlockPayload BlockPayload = BlockPayloads.ElementAt((int)CurrentBlockIndex);
-                uint FlashPartIndex = BlockPayload.FlashPartIndex;
+                uint FlashPartIndex = (uint)BlockPayload.FlashPartIndex;
                 FlashPart FlashPart = flashParts[FlashPartIndex];
                 Stream FlashPartStream = FlashPart.Stream;
-                FlashPartStream.Seek(BlockPayload.FlashPartStreamLocation, SeekOrigin.Begin);
+                FlashPartStream.Seek((long)BlockPayload.FlashPartStreamLocation, SeekOrigin.Begin);
 
                 byte[] BlockBuffer = new byte[BlockSize];
                 FlashPartStream.Read(BlockBuffer, 0, (int)BlockSize);

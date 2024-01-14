@@ -25,11 +25,11 @@ using Img2Ffu.Data;
 
 namespace Img2Ffu.Flashing
 {
-    public class BlockPayload(byte[] ChunkHash, WriteDescriptor WriteDescriptor, uint StreamIndex, long StreamLocation)
+    public class BlockPayload(byte[] ChunkHash, WriteDescriptor WriteDescriptor, ulong StreamIndex, ulong StreamLocation)
     {
         public byte[] ChunkHash = ChunkHash;
         public WriteDescriptor WriteDescriptor = WriteDescriptor;
-        public uint FlashPartIndex = StreamIndex;
-        public long FlashPartStreamLocation = StreamLocation;
+        public ulong FlashPartIndex = StreamIndex;
+        public ulong FlashPartStreamLocation = StreamLocation;
     }
 }

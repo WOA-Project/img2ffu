@@ -67,7 +67,7 @@ namespace Img2Ffu.Flashing
 
         private static readonly byte[] EMPTY_BLOCK_HASH = [0xFA, 0x43, 0x23, 0x9B, 0xCE, 0xE7, 0xB9, 0x7C, 0xA6, 0x2F, 0x00, 0x7C, 0xC6, 0x84, 0x87, 0x56, 0x0A, 0x39, 0xE1, 0x9F, 0x74, 0xF3, 0xDD, 0xE7, 0x48, 0x6D, 0xB3, 0xF9, 0x8D, 0xF8, 0xE4, 0x71];
 
-        internal static BlockPayload[] GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, uint MaximumNumberOfBlankBlocksAllowed)
+        internal static BlockPayload[] GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, ulong MaximumNumberOfBlankBlocksAllowed)
         {
             List<BlockPayload> flashingPayload = [];
 
@@ -90,22 +90,22 @@ namespace Img2Ffu.Flashing
             ulong blankBlockCount = 0;
             List<BlockPayload> blankBlocks = [];
 
-            for (uint flashPartIndex = 0; flashPartIndex < flashParts.Length; flashPartIndex++)
+            for (ulong flashPartIndex = 0; flashPartIndex < (ulong)flashParts.LongLength; flashPartIndex++)
             {
                 FlashPart flashPart = flashParts[(int)flashPartIndex];
 
                 flashPart.Stream.Seek(0, SeekOrigin.Begin);
-                long FlashPartBlockCount = flashPart.Stream.Length / BlockSize;
-                uint FlashPartStartBlockIndex = (uint)flashPart.StartLocation / BlockSize;
+                ulong FlashPartBlockCount = (ulong)flashPart.Stream.Length / BlockSize;
+                ulong FlashPartStartBlockIndex = flashPart.StartLocation / BlockSize;
 
                 for (uint FlashPartBlockIndex = 0; FlashPartBlockIndex < FlashPartBlockCount; FlashPartBlockIndex++)
                 {
                     byte[] BlockBuffer = new byte[BlockSize];
-                    long BlockLocationInFlashPartStream = flashPart.Stream.Position;
+                    ulong BlockLocationInFlashPartStream = (ulong)flashPart.Stream.Position;
                     flashPart.Stream.Read(BlockBuffer, 0, (int)BlockSize);
                     byte[] BlockHash = SHA256.HashData(BlockBuffer);
 
-                    uint DiskBlockIndex = FlashPartStartBlockIndex + FlashPartBlockIndex;
+                    ulong DiskBlockIndex = FlashPartStartBlockIndex + FlashPartBlockIndex;
 
                     WriteDescriptor writeDescriptor = new()
                     {
@@ -117,7 +117,7 @@ namespace Img2Ffu.Flashing
 
                         DiskLocations = [new DiskLocation()
                         {
-                            BlockIndex = DiskBlockIndex,
+                            BlockIndex = (uint)DiskBlockIndex,
                             DiskAccessMethod = 0
                         }]
                     };
