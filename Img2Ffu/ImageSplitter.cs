@@ -27,6 +27,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using static Img2Ffu.GPT;
 
 namespace Img2Ffu
 {
@@ -42,7 +43,7 @@ namespace Img2Ffu
             byte[] GPTBuffer = new byte[chunkSize];
             stream.Read(GPTBuffer, 0, (int)chunkSize);
 
-            uint requiredGPTBufferSize = Img2Ffu.GPT.GetGPTSize(GPTBuffer, sectorSize);
+            uint requiredGPTBufferSize = GetGPTSize(GPTBuffer, sectorSize);
             if (chunkSize < requiredGPTBufferSize)
             {
                 string errorMessage = $"The chunk size is too small to contain the GPT, the GPT is {requiredGPTBufferSize} bytes long, the chunk size is {chunkSize} bytes long";
@@ -56,7 +57,7 @@ namespace Img2Ffu
 
             if (chunkSize > requiredGPTBufferSize && GPT.Partitions.OrderBy(x => x.FirstSector).Any(x => x.FirstSector < sectorsInAChunk))
             {
-                GPT.Partition conflictingPartition = GPT.Partitions.OrderBy(x => x.FirstSector).First(x => x.FirstSector < sectorsInAChunk);
+                Partition conflictingPartition = GPT.Partitions.OrderBy(x => x.FirstSector).First(x => x.FirstSector < sectorsInAChunk);
 
                 string errorMessage = $"The chunk size is too big to contain only the GPT, the GPT is {requiredGPTBufferSize} bytes long, the chunk size is {chunkSize} bytes long. The overlapping partition is {conflictingPartition.Name}";
                 Logging.Log(errorMessage, Logging.LoggingLevel.Error);
@@ -66,7 +67,7 @@ namespace Img2Ffu
             return GPT;
         }
 
-        internal static (FlashPart[], List<GPT.Partition> partitions) GetImageSlices(Stream stream, uint chunkSize, string[] excluded, uint sectorSize)
+        internal static (FlashPart[], List<Partition> partitions) GetImageSlices(Stream stream, uint chunkSize, string[] excluded, uint sectorSize)
         {
             GPT GPT = GetGPT(stream, chunkSize, sectorSize);
             uint sectorsInAChunk = chunkSize / sectorSize;
@@ -75,7 +76,7 @@ namespace Img2Ffu
             Logging.Log($"Chunk Size: {chunkSize}");
             Logging.Log($"Sectors in a chunk: {sectorsInAChunk}");
 
-            List<GPT.Partition> Partitions = GPT.Partitions;
+            List<Partition> Partitions = GPT.Partitions;
 
             bool isUnlocked = GPT.GetPartition(IS_UNLOCKED_PARTITION_NAME) != null;
             bool isUnlockedSpecA = GPT.GetPartition(HACK_PARTITION_NAME) != null && GPT.GetPartition(BACKUP_BS_NV_PARTITION_NAME) != null;
@@ -99,7 +100,18 @@ namespace Img2Ffu
 
             FlashPart currentFlashPart = null;
 
-            foreach (GPT.Partition partition in Partitions.OrderBy(x => x.FirstSector))
+            int maxPartitionNameSize = Partitions.Select(x => x.Name.Length).Max() + 1;
+            int maxPartitionLastSector = Partitions.Select(x => x.LastSector.ToString().Length).Max() + 1;
+
+            Logging.Log($"{"Name".PadRight(maxPartitionNameSize)} - " +
+                $"{("First").PadRight(maxPartitionLastSector)} - " +
+                $"{("Last").PadRight(maxPartitionLastSector)} - " +
+                $"{("Sectors").PadRight(maxPartitionLastSector)} - " +
+                $"{("Chunks").PadRight(maxPartitionLastSector)}",
+                Logging.LoggingLevel.Information);
+            Logging.Log("");
+
+            foreach (Partition partition in Partitions.OrderBy(x => x.FirstSector))
             {
                 bool isExcluded = false;
 
@@ -117,11 +129,14 @@ namespace Img2Ffu
                     }
                 }
 
-                string outputString = (isExcluded ? "*" : "") + partition.Name + new string(' ', 50);
-                outputString = outputString.Insert(25, $" - {partition.FirstSector}");
-                outputString = outputString.Insert(40, $" - {partition.LastSector}");
-                outputString = outputString.Insert(55, $" - {partition.SizeInSectors} sectors");
-                Logging.Log(outputString, isExcluded ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
+                string name = $"{(isExcluded ? "*" : "")}{partition.Name}";
+
+                Logging.Log($"{name.PadRight(maxPartitionNameSize)} - " +
+                    $"{(partition.FirstSector + "s").PadRight(maxPartitionLastSector)} - " +
+                    $"{(partition.LastSector + "s").PadRight(maxPartitionLastSector)} - " +
+                    $"{(partition.SizeInSectors + "s").PadRight(maxPartitionLastSector)} - " +
+                    $"{(partition.SizeInSectors / (double)sectorsInAChunk + "c").PadRight(maxPartitionLastSector)}", 
+                    isExcluded ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
 
                 if (isExcluded)
                 {
@@ -199,32 +214,30 @@ namespace Img2Ffu
             Logging.Log("Final Flash Parts");
             Logging.Log("");
             FlashPart[] finalFlashParts = [.. flashParts.OrderBy(x => x.StartLocation)];
-            PrintFlashParts(finalFlashParts, sectorSize);
+            PrintFlashParts(finalFlashParts, sectorSize, chunkSize);
             Logging.Log("");
 
             return (finalFlashParts, Partitions);
         }
 
-        internal static void PrintFlashParts(FlashPart[] finalFlashParts, uint sectorSize)
+        internal static void PrintFlashParts(FlashPart[] finalFlashParts, uint sectorSize, uint chunkSize)
         {
             for (int i = 0; i < finalFlashParts.Length; i++)
             {
                 FlashPart flashPart = finalFlashParts[i];
-                PrintFlashPart(flashPart, sectorSize, $"FlashPart[{i}]");
+                PrintFlashPart(flashPart, sectorSize, chunkSize, $"FlashPart[{i}]");
             }
         }
 
-        internal static void PrintFlashPart(FlashPart flashPart, uint sectorSize, string name)
+        internal static void PrintFlashPart(FlashPart flashPart, uint sectorSize, uint chunkSize, string name)
         {
+            uint sectorsInAChunk = chunkSize / sectorSize;
+
             ulong totalSectors = (ulong)flashPart.Stream.Length / sectorSize;
             ulong firstSector = flashPart.StartLocation / sectorSize;
             ulong lastSector = firstSector + totalSectors - 1;
 
-            string outputString = name + new string(' ', 50);
-            outputString = outputString.Insert(25, $" - {firstSector}");
-            outputString = outputString.Insert(40, $" - {lastSector}");
-            outputString = outputString.Insert(55, $" - {totalSectors} sectors");
-            Logging.Log(outputString, Logging.LoggingLevel.Information);
+            Logging.Log($"{name} - {firstSector}s - {lastSector}s - {totalSectors}s - {totalSectors / (double)sectorsInAChunk}c", Logging.LoggingLevel.Information);
         }
     }
 }
