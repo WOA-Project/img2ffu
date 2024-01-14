@@ -26,7 +26,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Threading.Tasks;
 using Img2Ffu.Data;
 using Img2Ffu.Helpers;
 
@@ -69,95 +68,69 @@ namespace Img2Ffu.Flashing
 
         private static readonly byte[] EMPTY_BLOCK_HASH = [0xFA, 0x43, 0x23, 0x9B, 0xCE, 0xE7, 0xB9, 0x7C, 0xA6, 0x2F, 0x00, 0x7C, 0xC6, 0x84, 0x87, 0x56, 0x0A, 0x39, 0xE1, 0x9F, 0x74, 0xF3, 0xDD, 0xE7, 0x48, 0x6D, 0xB3, 0xF9, 0x8D, 0xF8, 0xE4, 0x71];
 
-        internal static void AddToDictionary(Dictionary<byte[], BlockPayload> BlockPayloads, byte[] BlockHash, ulong DiskBlockIndex, ulong FlashPartIndex, ulong BlockLocationInFlashPartStream)
-        {
-            if (BlockPayloads.TryGetValue(BlockHash, out BlockPayload value))
-            {
-                List<DiskLocation> diskLocations = [.. value.WriteDescriptor.DiskLocations];
-                diskLocations.Add(new DiskLocation()
-                {
-                    BlockIndex = (uint)DiskBlockIndex,
-                    DiskAccessMethod = 0
-                });
-                value.WriteDescriptor.DiskLocations = [.. diskLocations];
-            }
-            else
-            {
-                WriteDescriptor writeDescriptor = new()
-                {
-                    BlockDataEntry = new BlockDataEntry
-                    {
-                        BlockCount = 1,
-                        LocationCount = 1
-                    },
-
-                    DiskLocations = [new DiskLocation()
-                    {
-                        BlockIndex = (uint)DiskBlockIndex,
-                        DiskAccessMethod = 0
-                    }]
-                };
-
-                BlockPayloads.Add(BlockHash, new BlockPayload(writeDescriptor, FlashPartIndex, BlockLocationInFlashPartStream));
-            }
-        }
-
-        internal static Dictionary<byte[], List<ulong>> GetHashedBlocks(FlashPart[] flashParts, uint BlockSize)
+        internal static Dictionary<ByteArrayKey, List<ulong>> GetHashedBlocks(FlashPart[] flashParts, uint BlockSize)
         {
             long CurrentBlockCount = 0;
             long TotalBlockCount = flashParts.Sum(x => x.Stream.Length / BlockSize);
-            Dictionary<byte[], List<ulong>> hashedBlocks = [];
+            Dictionary<ByteArrayKey, List<ulong>> hashedBlocks = [];
             DateTime startTime = DateTime.Now;
 
             Logging.Log($"Total Block Count: {TotalBlockCount} - {TotalBlockCount * BlockSize / (1024 * 1024 * 1024)}GB");
             Logging.Log("Hashing resources...");
 
-            foreach (FlashPart flashPart in flashParts)
+            using (SHA256CryptoServiceProvider sha256CryptoServiceProvider = new())
             {
-                flashPart.Stream.Seek(0, SeekOrigin.Begin);
-
-                ulong FlashPartStartBlockIndex = flashPart.StartLocation / BlockSize;
-                ulong FlashPartBlockCount = (ulong)flashPart.Stream.Length / BlockSize;
-
-                for (uint FlashPartBlockIndex = 0; FlashPartBlockIndex < FlashPartBlockCount; FlashPartBlockIndex++)
+                foreach (FlashPart flashPart in flashParts)
                 {
-                    byte[] BlockBuffer = new byte[BlockSize];
-                    flashPart.Stream.ReadExactly(BlockBuffer, 0, (int)BlockSize);
-                    byte[] BlockHash = SHA256.HashData(BlockBuffer);
+                    flashPart.Stream.Seek(0, SeekOrigin.Begin);
 
-                    if (!hashedBlocks.TryGetValue(BlockHash, out List<ulong> value))
-                    {
-                        hashedBlocks.Add(BlockHash, [FlashPartStartBlockIndex + FlashPartBlockIndex]);
-                    }
-                    else
-                    {
-                        value.Add(FlashPartStartBlockIndex + FlashPartBlockIndex);
-                    }
+                    ulong FlashPartStartBlockIndex = flashPart.StartLocation / BlockSize;
+                    ulong FlashPartBlockCount = (ulong)flashPart.Stream.Length / BlockSize;
 
-                    CurrentBlockCount++;
-                    ShowProgress(CurrentBlockCount, TotalBlockCount, startTime);
+                    for (uint FlashPartBlockIndex = 0; FlashPartBlockIndex < FlashPartBlockCount; FlashPartBlockIndex++)
+                    {
+                        byte[] BlockBuffer = new byte[BlockSize];
+                        flashPart.Stream.ReadExactly(BlockBuffer, 0, (int)BlockSize);
+                        byte[] BlockHash = sha256CryptoServiceProvider.ComputeHash(BlockBuffer);
+
+                        ulong DiskBlockIndex = FlashPartStartBlockIndex + FlashPartBlockIndex;
+
+                        ByteArrayKey byteArrayKey = new(BlockHash);
+                        if (hashedBlocks.TryGetValue(byteArrayKey, out List<ulong>? value))
+                        {
+                            value.Add(DiskBlockIndex);
+                        }
+                        else
+                        {
+                            hashedBlocks.Add(byteArrayKey, [DiskBlockIndex]);
+                        }
+
+                        CurrentBlockCount++;
+                        ShowProgress(CurrentBlockCount, TotalBlockCount, startTime);
+                    }
                 }
             }
+
             Logging.Log("");
             Logging.Log($"FFU Block Count: {hashedBlocks.Count} - {hashedBlocks.Count * BlockSize / (1024 * 1024 * 1024)}GB");
 
             return hashedBlocks;
         }
 
-        internal static Dictionary<byte[], BlockPayload> GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, ulong MaximumNumberOfBlankBlocksAllowed)
+        internal static Dictionary<ByteArrayKey, BlockPayload> GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, ulong MaximumNumberOfBlankBlocksAllowed)
         {
-            Dictionary<byte[], BlockPayload> blockPayloads = [];
+            Dictionary<ByteArrayKey, BlockPayload> blockPayloads = [];
 
             if (flashParts == null)
             {
                 return blockPayloads;
             }
 
-            Dictionary<byte[], List<ulong>> hashedBlocks = GetHashedBlocks(flashParts, BlockSize);
+            Dictionary<ByteArrayKey, List<ulong>> hashedBlocks = GetHashedBlocks(flashParts, BlockSize);
 
             Logging.Log("Building resource payloads...");
 
-            foreach (KeyValuePair<byte[], List<ulong>> hashedBlock in hashedBlocks)
+            foreach (KeyValuePair<ByteArrayKey, List<ulong>> hashedBlock in hashedBlocks)
             {
                 if (hashedBlock.Value.Count > 1)
                 {
@@ -173,9 +146,9 @@ namespace Img2Ffu.Flashing
                         DiskLocations = diskLocations
                     };
 
-                    for (ulong i = 0; i < (ulong)flashParts.LongLength; i++)
+                    for (ulong flashPartIndex = 0; flashPartIndex < (ulong)flashParts.LongLength; flashPartIndex++)
                     {
-                        FlashPart flashPart = flashParts[i];
+                        FlashPart flashPart = flashParts[flashPartIndex];
                         ulong DiskBlockIndex = diskLocations[0].BlockIndex;
 
                         ulong FlashPartStartBlockIndex = flashPart.StartLocation / BlockSize;
@@ -184,7 +157,8 @@ namespace Img2Ffu.Flashing
 
                         if (FlashPartStartBlockIndex <= DiskBlockIndex && DiskBlockIndex <= FlashPartEndBlockIndex)
                         {
-                            blockPayloads.Add(hashedBlock.Key, new BlockPayload(writeDescriptor, i, (DiskBlockIndex - FlashPartStartBlockIndex) * BlockSize));
+                            ulong streamLocation = (DiskBlockIndex - FlashPartStartBlockIndex) * BlockSize;
+                            blockPayloads.Add(hashedBlock.Key, new BlockPayload(writeDescriptor, flashPartIndex, streamLocation));
                             break;
                         }
                     }

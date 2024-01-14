@@ -29,7 +29,7 @@ namespace Img2Ffu.Manifest
     {
         public bool? RequiredToFlash;
         public uint UsedSectors;
-        public Guid Type;
+        public Guid? Type;
         public uint TotalSectors;
         public string Primary;
         public string Name;

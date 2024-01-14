@@ -125,7 +125,7 @@ namespace Img2Ffu.Manifest
 
             if (partition.Type != null)
             {
-                PartitionSection += $"Type            = {partition.Type}\r\n";
+                PartitionSection += $"Type            = {{{partition.Type.Value.ToString().ToUpper()}}}\r\n";
             }
 
             PartitionSection += $"TotalSectors    = {partition.TotalSectors}\r\n";
@@ -186,7 +186,7 @@ namespace Img2Ffu.Manifest
             // TODO: implement more
             foreach (GPT.Partition part in partitions)
             {
-                Parts.Add(new PartitionManifest() { Name = part.Name, TotalSectors = (uint)part.SizeInSectors, UsedSectors = (uint)part.SizeInSectors, RequiredToFlash = true });
+                Parts.Add(new PartitionManifest() { Name = part.Name, TotalSectors = (uint)part.SizeInSectors, UsedSectors = (uint)part.SizeInSectors, RequiredToFlash = true, Type = part.PartitionTypeGuid });
             }
 
             return Parts;
