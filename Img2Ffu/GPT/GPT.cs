@@ -39,7 +39,20 @@ namespace Img2Ffu
         internal bool HasChanged = false;
         
         public List<Partition> Partitions = [];
-        
+
+        internal static uint GetGPTSize(byte[] GPTBuffer, uint SectorSize)
+        {
+            uint? TempHeaderOffset = ByteOperations.FindAscii(GPTBuffer, "EFI PART") ?? throw new Exception("Bad GPT");
+
+            uint HeaderOffset = (uint)TempHeaderOffset;
+            uint TableOffset = HeaderOffset + SectorSize;
+            uint MaxPartitions = ByteOperations.ReadUInt32(GPTBuffer, HeaderOffset + 0x50);
+            uint PartitionEntrySize = ByteOperations.ReadUInt32(GPTBuffer, HeaderOffset + 0x54);
+            uint TableSize = MaxPartitions * PartitionEntrySize;
+
+            return TableOffset + TableSize;
+        }
+
         internal GPT(byte[] GPTBuffer, uint SectorSize)
         {
             this.GPTBuffer = GPTBuffer;

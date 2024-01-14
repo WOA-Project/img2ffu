@@ -106,7 +106,7 @@ namespace Img2Ffu.Data
                     break;
             }
 
-            byte[] PlatformIdsBuffer = new byte[0xC0];
+            byte[] PlatformIdsBuffer = new byte[192];
             int CurrentBufferSize = 0;
             foreach (string PlatformId in PlatformIds)
             {

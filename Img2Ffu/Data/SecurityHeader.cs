@@ -28,9 +28,8 @@ namespace Img2Ffu.Data
 {
     public class SecurityHeader
     {
-        private readonly uint Size = 0x20;
+        private readonly uint Size = 32;
         private readonly string Signature = "SignedImage ";
-        private uint ChunkSizeInKb = 0x80;
         private readonly uint HashAlgorithm = 0x800C; // SHA256 algorithm id
 
         public uint CatalogSize;
@@ -41,7 +40,7 @@ namespace Img2Ffu.Data
             using MemoryStream SecurityHeaderStream = new();
             using BinaryWriter binaryWriter = new(SecurityHeaderStream);
 
-            ChunkSizeInKb = ChunkSize / 0x400;
+            uint ChunkSizeInKb = ChunkSize / 1024;
 
             binaryWriter.Write(Size);
             binaryWriter.Write(Encoding.ASCII.GetBytes(Signature));

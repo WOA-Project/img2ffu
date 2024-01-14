@@ -38,7 +38,7 @@ namespace Img2Ffu.Data
             binaryWriter.Write(HasDeviceTargetInfo ? 28u : 24u); // Size
             binaryWriter.Write(Encoding.ASCII.GetBytes("ImageFlash  ")); // Signature
             binaryWriter.Write(ManifestLength); // Manifest Length
-            binaryWriter.Write(ChunkSize / 0x400); // Chunk Size in KB
+            binaryWriter.Write(ChunkSize / 1024); // Chunk Size in KB
 
             if (HasDeviceTargetInfo)
             {
