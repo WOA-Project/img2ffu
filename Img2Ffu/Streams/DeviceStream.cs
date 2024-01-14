@@ -31,7 +31,7 @@ using System.Linq;
 
 namespace Img2Ffu.Streams
 {
-    public class DeviceStream : Stream
+    public partial class DeviceStream : Stream
     {
         private const uint GENERIC_READ = 0x80000000;
         private const uint GENERIC_WRITE = 0x40000000;
@@ -52,56 +52,6 @@ namespace Img2Ffu.Streams
         private static readonly uint DISK_GET_DRIVE_GEOMETRY_EX = CTL_CODE(DISK_BASE, 0x0028, METHOD_BUFFERED, FILE_ANY_ACCESS);
         private static readonly uint FSCTL_LOCK_VOLUME = CTL_CODE(FILE_DEVICE_FILE_SYSTEM, 6, METHOD_BUFFERED, FILE_ANY_ACCESS);
         private static readonly uint FSCTL_UNLOCK_VOLUME = CTL_CODE(FILE_DEVICE_FILE_SYSTEM, 7, METHOD_BUFFERED, FILE_ANY_ACCESS);
-
-        private enum MEDIA_TYPE : int
-        {
-            Unknown = 0,
-            F5_1Pt2_512 = 1,
-            F3_1Pt44_512 = 2,
-            F3_2Pt88_512 = 3,
-            F3_20Pt8_512 = 4,
-            F3_720_512 = 5,
-            F5_360_512 = 6,
-            F5_320_512 = 7,
-            F5_320_1024 = 8,
-            F5_180_512 = 9,
-            F5_160_512 = 10,
-            RemovableMedia = 11,
-            FixedMedia = 12,
-            F3_120M_512 = 13,
-            F3_640_512 = 14,
-            F5_640_512 = 15,
-            F5_720_512 = 16,
-            F3_1Pt2_512 = 17,
-            F3_1Pt23_1024 = 18,
-            F5_1Pt23_1024 = 19,
-            F3_128Mb_512 = 20,
-            F3_230Mb_512 = 21,
-            F8_256_128 = 22,
-            F3_200Mb_512 = 23,
-            F3_240M_512 = 24,
-            F3_32M_512 = 25
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct DISK_GEOMETRY
-        {
-            internal long Cylinders;
-            internal MEDIA_TYPE MediaType;
-            internal uint TracksPerCylinder;
-            internal uint SectorsPerTrack;
-            internal uint BytesPerSector;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct DISK_GEOMETRY_EX
-        {
-            internal DISK_GEOMETRY Geometry;
-            internal long DiskSize;
-
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 1)]
-            internal byte[] Data;
-        }
 
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         private static extern nint CreateFile(string lpFileName, uint dwDesiredAccess, uint dwShareMode, nint lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, nint hTemplateFile);
@@ -415,7 +365,7 @@ namespace Img2Ffu.Streams
 
             SafeFileHandle handleValue = new(hDevice, true);
 
-            if (null == hDevice || handleValue.IsInvalid)
+            if (handleValue.IsInvalid)
             {
                 throw new Win32Exception(Marshal.GetLastWin32Error());
             }

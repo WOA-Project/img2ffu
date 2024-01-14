@@ -33,7 +33,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
-using System.Xml.Linq;
 
 namespace Img2Ffu
 {
@@ -116,7 +115,7 @@ namespace Img2Ffu
         {
             FFUMetadataHeaderTempFileStream.Seek(0, SeekOrigin.Begin);
 
-            using MemoryStream HashTableStream = new MemoryStream();
+            using MemoryStream HashTableStream = new();
             using BinaryWriter binaryWriter = new(HashTableStream);
 
             for (int i = 0; i < FFUMetadataHeaderTempFileStream.Length / BlockSize; i++)
@@ -309,7 +308,7 @@ namespace Img2Ffu
             Logging.Log("Generating store header...");
             StoreHeader store = new()
             {
-                WriteDescriptorCount = (uint)BlockPayloads.Count(),
+                WriteDescriptorCount = (uint)BlockPayloads.Count,
                 WriteDescriptorLength = (uint)WriteDescriptorBuffer.Length,
                 PlatformIds = PlatformIDs,
                 BlockSize = BlockSize,
@@ -500,19 +499,14 @@ namespace Img2Ffu
             // Data Blocks
             //
             Logging.Log("Writing Data Blocks...");
-            for (ulong CurrentBlockIndex = 0; CurrentBlockIndex < (ulong)BlockPayloads.Count(); CurrentBlockIndex++)
+            for (ulong CurrentBlockIndex = 0; CurrentBlockIndex < (ulong)BlockPayloads.Count; CurrentBlockIndex++)
             {
                 BlockPayload BlockPayload = BlockPayloads.ElementAt((int)CurrentBlockIndex).Value;
-                uint FlashPartIndex = (uint)BlockPayload.FlashPartIndex;
-                FlashPart FlashPart = flashParts[FlashPartIndex];
-                Stream FlashPartStream = FlashPart.Stream;
-                FlashPartStream.Seek((long)BlockPayload.FlashPartStreamLocation, SeekOrigin.Begin);
+                byte[] BlockBuffer = BlockPayload.ReadBlock(flashParts, BlockSize);
 
-                byte[] BlockBuffer = new byte[BlockSize];
-                FlashPartStream.Read(BlockBuffer, 0, (int)BlockSize);
                 FFUFileStream.Write(BlockBuffer, 0, (int)BlockSize);
 
-                ulong totalBytes = (ulong)BlockPayloads.Count() * BlockSize;
+                ulong totalBytes = (ulong)BlockPayloads.Count * BlockSize;
                 ulong bytesRead = CurrentBlockIndex * BlockSize;
                 ulong sourcePosition = CurrentBlockIndex * BlockSize;
 

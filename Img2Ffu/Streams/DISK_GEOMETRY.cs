@@ -1,6 +1,7 @@
 ﻿/*
 
 Copyright (c) 2019, Gustave Monce - gus33000.me - @gus33000
+Copyright (c) 2018, Proto Beta Test - protobetatest.com - @ProtoBetaTest
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,27 +22,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using Img2Ffu.Data;
-using System.IO;
+using System.Runtime.InteropServices;
 
-namespace Img2Ffu.Flashing
+namespace Img2Ffu.Streams
 {
-    public class BlockPayload(WriteDescriptor WriteDescriptor, ulong StreamIndex, ulong StreamLocation)
+    public partial class DeviceStream
     {
-        public WriteDescriptor WriteDescriptor = WriteDescriptor;
-        public ulong FlashPartIndex = StreamIndex;
-        public ulong FlashPartStreamLocation = StreamLocation;
-
-        internal byte[] ReadBlock(FlashPart[] flashParts, ulong BlockSize)
+        [StructLayout(LayoutKind.Sequential)]
+        private struct DISK_GEOMETRY
         {
-            FlashPart FlashPart = flashParts[FlashPartIndex];
-            Stream FlashPartStream = FlashPart.Stream;
-            FlashPartStream.Seek((long)FlashPartStreamLocation, SeekOrigin.Begin);
-
-            byte[] BlockBuffer = new byte[BlockSize];
-            FlashPartStream.Read(BlockBuffer, 0, (int)BlockSize);
-
-            return BlockBuffer;
+            internal long Cylinders;
+            internal MEDIA_TYPE MediaType;
+            internal uint TracksPerCylinder;
+            internal uint SectorsPerTrack;
+            internal uint BytesPerSector;
         }
     }
 }

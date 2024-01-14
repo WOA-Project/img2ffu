@@ -117,11 +117,13 @@ namespace Img2Ffu.Flashing
 
             long CurrentBlockCount = 0;
             DateTime startTime = DateTime.Now;
+
             Logging.Log("Hashing resources...");
 
             bool blankBlockPhase = false;
             ulong blankBlockCount = 0;
-            List<BlockPayload> blankBlocks = [];
+
+            List<(ulong DiskBlockIndex, ulong FlashPartIndex, ulong FlashPartStreamLocation)> blankBlocks = [];
 
             for (ulong flashPartIndex = 0; flashPartIndex < (ulong)flashParts.LongLength; flashPartIndex++)
             {
@@ -140,21 +142,6 @@ namespace Img2Ffu.Flashing
 
                     ulong DiskBlockIndex = FlashPartStartBlockIndex + FlashPartBlockIndex;
 
-                    WriteDescriptor writeDescriptor = new()
-                    {
-                        BlockDataEntry = new BlockDataEntry
-                        {
-                            BlockCount = 1,
-                            LocationCount = 1
-                        },
-
-                        DiskLocations = [new DiskLocation()
-                        {
-                            BlockIndex = (uint)DiskBlockIndex,
-                            DiskAccessMethod = 0
-                        }]
-                    };
-
                     if (!ByteOperations.Compare(EMPTY_BLOCK_HASH, BlockHash))
                     {
                         AddToDictionary(blockPayloads, BlockHash, DiskBlockIndex, flashPartIndex, BlockLocationInFlashPartStream);
@@ -162,9 +149,9 @@ namespace Img2Ffu.Flashing
                         if (blankBlockPhase && blankBlockCount < MaximumNumberOfBlankBlocksAllowed)
                         {
                             // Add the last recorded blank blocks
-                            foreach (BlockPayload blankBlock in blankBlocks)
+                            foreach ((ulong DiskBlockIndex, ulong FlashPartIndex, ulong FlashPartStreamLocation) blankBlock in blankBlocks)
                             {
-                                AddToDictionary(blockPayloads, EMPTY_BLOCK_HASH, blankBlock.WriteDescriptor.DiskLocations[0].BlockIndex, blankBlock.FlashPartIndex, blankBlock.FlashPartStreamLocation);
+                                AddToDictionary(blockPayloads, EMPTY_BLOCK_HASH, blankBlock.DiskBlockIndex, blankBlock.FlashPartIndex, blankBlock.FlashPartStreamLocation);
                             }
                         }
 
@@ -175,7 +162,7 @@ namespace Img2Ffu.Flashing
                     }
                     else if (blankBlockCount < MaximumNumberOfBlankBlocksAllowed)
                     {
-                        blankBlocks.Add(new BlockPayload(writeDescriptor, flashPartIndex, BlockLocationInFlashPartStream));
+                        blankBlocks.Add((DiskBlockIndex, flashPartIndex, BlockLocationInFlashPartStream));
 
                         blankBlockPhase = true;
                         blankBlockCount++;
@@ -183,9 +170,9 @@ namespace Img2Ffu.Flashing
                     else if (blankBlockCount >= MaximumNumberOfBlankBlocksAllowed && blankBlocks.Count > 0)
                     {
                         // Add the last recorded blank blocks and clear the list
-                        foreach (BlockPayload blankBlock in blankBlocks)
+                        foreach ((ulong DiskBlockIndex, ulong FlashPartIndex, ulong FlashPartStreamLocation) blankBlock in blankBlocks)
                         {
-                            AddToDictionary(blockPayloads, EMPTY_BLOCK_HASH, blankBlock.WriteDescriptor.DiskLocations[0].BlockIndex, blankBlock.FlashPartIndex, blankBlock.FlashPartStreamLocation);
+                            AddToDictionary(blockPayloads, EMPTY_BLOCK_HASH, blankBlock.DiskBlockIndex, blankBlock.FlashPartIndex, blankBlock.FlashPartStreamLocation);
                         }
                         blankBlocks.Clear();
                     }
