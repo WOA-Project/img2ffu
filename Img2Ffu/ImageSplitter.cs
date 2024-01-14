@@ -32,7 +32,7 @@ namespace Img2Ffu
 {
     internal class ImageSplitter
     {
-        internal static (FlashPart[], ulong, List<GPT.Partition> partitions) GetImageSlices(Stream stream, uint chunkSize, string[] excluded, uint sectorSize)
+        internal static (FlashPart[], List<GPT.Partition> partitions) GetImageSlices(Stream stream, uint chunkSize, string[] excluded, uint sectorSize)
         {
             byte[] GPTBuffer = new byte[chunkSize];
             stream.Read(GPTBuffer, 0, (int)chunkSize);
@@ -64,15 +64,8 @@ namespace Img2Ffu
 
             FlashPart currentFlashPart = null;
 
-            ulong EndOfPLATPartition = 0;
-
             foreach (GPT.Partition partition in Partitions.OrderBy(x => x.FirstSector))
             {
-                if (partition.Name == "PLAT")
-                {
-                    EndOfPLATPartition = partition.LastSector / sectorsInAChunk;
-                }
-
                 bool isExcluded = false;
 
                 if (excluded.Any(x => x == partition.Name))
@@ -151,13 +144,10 @@ namespace Img2Ffu
             }
 
             Logging.Log("");
-            Logging.Log($"Plat end: {EndOfPLATPartition}");
-
-            Logging.Log("");
             Logging.Log("Inserting GPT back into the FFU image");
             flashParts.Insert(0, new FlashPart(new MemoryStream(GPTBuffer), 0));
 
-            return (flashParts.OrderBy(x => x.StartLocation).ToArray(), EndOfPLATPartition, Partitions);
+            return (flashParts.OrderBy(x => x.StartLocation).ToArray(), Partitions);
         }
     }
 }

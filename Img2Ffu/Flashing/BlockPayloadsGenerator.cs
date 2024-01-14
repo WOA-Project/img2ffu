@@ -67,13 +67,46 @@ namespace Img2Ffu.Flashing
 
         private static readonly byte[] EMPTY_BLOCK_HASH = [0xFA, 0x43, 0x23, 0x9B, 0xCE, 0xE7, 0xB9, 0x7C, 0xA6, 0x2F, 0x00, 0x7C, 0xC6, 0x84, 0x87, 0x56, 0x0A, 0x39, 0xE1, 0x9F, 0x74, 0xF3, 0xDD, 0xE7, 0x48, 0x6D, 0xB3, 0xF9, 0x8D, 0xF8, 0xE4, 0x71];
 
-        internal static BlockPayload[] GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, ulong MaximumNumberOfBlankBlocksAllowed)
+        internal static void AddToDictionary(Dictionary<byte[], BlockPayload> BlockPayloads, byte[] BlockHash, ulong DiskBlockIndex, ulong FlashPartIndex, ulong BlockLocationInFlashPartStream)
         {
-            List<BlockPayload> flashingPayload = [];
+            if (BlockPayloads.TryGetValue(BlockHash, out BlockPayload value))
+            {
+                List<DiskLocation> diskLocations = [.. value.WriteDescriptor.DiskLocations];
+                diskLocations.Add(new DiskLocation()
+                {
+                    BlockIndex = (uint)DiskBlockIndex,
+                    DiskAccessMethod = 0
+                });
+                value.WriteDescriptor.DiskLocations = [.. diskLocations];
+            }
+            else
+            {
+                WriteDescriptor writeDescriptor = new()
+                {
+                    BlockDataEntry = new BlockDataEntry
+                    {
+                        BlockCount = 1,
+                        LocationCount = 1
+                    },
+
+                    DiskLocations = [new DiskLocation()
+                    {
+                        BlockIndex = (uint)DiskBlockIndex,
+                        DiskAccessMethod = 0
+                    }]
+                };
+
+                BlockPayloads.Add(BlockHash, new BlockPayload(writeDescriptor, FlashPartIndex, BlockLocationInFlashPartStream));
+            }
+        }
+
+        internal static Dictionary<byte[], BlockPayload> GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, ulong MaximumNumberOfBlankBlocksAllowed)
+        {
+            Dictionary<byte[], BlockPayload> blockPayloads = [];
 
             if (flashParts == null)
             {
-                return [.. flashingPayload];
+                return blockPayloads;
             }
 
             long TotalBlockCount = 0;
@@ -124,14 +157,14 @@ namespace Img2Ffu.Flashing
 
                     if (!ByteOperations.Compare(EMPTY_BLOCK_HASH, BlockHash))
                     {
-                        flashingPayload.Add(new BlockPayload(BlockHash, writeDescriptor, flashPartIndex, BlockLocationInFlashPartStream));
+                        AddToDictionary(blockPayloads, BlockHash, DiskBlockIndex, flashPartIndex, BlockLocationInFlashPartStream);
 
                         if (blankBlockPhase && blankBlockCount < MaximumNumberOfBlankBlocksAllowed)
                         {
                             // Add the last recorded blank blocks
                             foreach (BlockPayload blankBlock in blankBlocks)
                             {
-                                flashingPayload.Add(blankBlock);
+                                AddToDictionary(blockPayloads, EMPTY_BLOCK_HASH, blankBlock.WriteDescriptor.DiskLocations[0].BlockIndex, blankBlock.FlashPartIndex, blankBlock.FlashPartStreamLocation);
                             }
                         }
 
@@ -142,7 +175,7 @@ namespace Img2Ffu.Flashing
                     }
                     else if (blankBlockCount < MaximumNumberOfBlankBlocksAllowed)
                     {
-                        blankBlocks.Add(new BlockPayload(BlockHash, writeDescriptor, flashPartIndex, BlockLocationInFlashPartStream));
+                        blankBlocks.Add(new BlockPayload(writeDescriptor, flashPartIndex, BlockLocationInFlashPartStream));
 
                         blankBlockPhase = true;
                         blankBlockCount++;
@@ -152,7 +185,7 @@ namespace Img2Ffu.Flashing
                         // Add the last recorded blank blocks and clear the list
                         foreach (BlockPayload blankBlock in blankBlocks)
                         {
-                            flashingPayload.Add(blankBlock);
+                            AddToDictionary(blockPayloads, EMPTY_BLOCK_HASH, blankBlock.WriteDescriptor.DiskLocations[0].BlockIndex, blankBlock.FlashPartIndex, blankBlock.FlashPartStreamLocation);
                         }
                         blankBlocks.Clear();
                     }
@@ -161,8 +194,9 @@ namespace Img2Ffu.Flashing
                     ShowProgress(CurrentBlockCount, TotalBlockCount, startTime, blankBlockPhase);
                 }
             }
+            Logging.Log("");
 
-            return [.. flashingPayload];
+            return blockPayloads;
         }
     }
 }
