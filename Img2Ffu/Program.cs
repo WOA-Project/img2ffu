@@ -43,9 +43,9 @@ namespace Img2Ffu
             Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
             {
                 Logging.Log("img2ffu - Converts raw image (img) files into full flash update (FFU) files");
-                Logging.Log("Copyright (c) 2019-2021, Gustave Monce - gus33000.me - @gus33000");
+                Logging.Log("Copyright (c) 2019-2024, Gustave Monce - gus33000.me - @gus33000");
                 Logging.Log("Copyright (c) 2018, Rene Lergner - wpinternals.net - @Heathcliff74xda");
-                Logging.Log("Released under the MIT license at github.com/gus33000/img2ffu");
+                Logging.Log("Released under the MIT license at github.com/WOA-Project/img2ffu");
                 Logging.Log("");
 
                 try
