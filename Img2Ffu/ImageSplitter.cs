@@ -198,25 +198,33 @@ namespace Img2Ffu
             Logging.Log("");
             Logging.Log("Final Flash Parts");
             Logging.Log("");
-
             FlashPart[] finalFlashParts = [.. flashParts.OrderBy(x => x.StartLocation)];
-
-            for (int i = 0; i < finalFlashParts.Length; i++)
-            {
-                FlashPart flashPart = finalFlashParts[i];
-
-                ulong totalSectors = (ulong)flashPart.Stream.Length / sectorSize;
-                ulong firstSector = flashPart.StartLocation / sectorSize;
-                ulong lastSector = firstSector + totalSectors - 1;
-
-                string outputString = $"FlashPart[{i}]" + new string(' ', 50);
-                outputString = outputString.Insert(25, $" - {firstSector}");
-                outputString = outputString.Insert(40, $" - {lastSector}");
-                outputString = outputString.Insert(55, $" - {totalSectors} sectors");
-            }
+            PrintFlashParts(finalFlashParts, sectorSize);
             Logging.Log("");
 
             return (finalFlashParts, Partitions);
+        }
+
+        internal static void PrintFlashParts(FlashPart[] finalFlashParts, uint sectorSize)
+        {
+            for (int i = 0; i < finalFlashParts.Length; i++)
+            {
+                FlashPart flashPart = finalFlashParts[i];
+                PrintFlashPart(flashPart, sectorSize, $"FlashPart[{i}]");
+            }
+        }
+
+        internal static void PrintFlashPart(FlashPart flashPart, uint sectorSize, string name)
+        {
+            ulong totalSectors = (ulong)flashPart.Stream.Length / sectorSize;
+            ulong firstSector = flashPart.StartLocation / sectorSize;
+            ulong lastSector = firstSector + totalSectors - 1;
+
+            string outputString = name + new string(' ', 50);
+            outputString = outputString.Insert(25, $" - {firstSector}");
+            outputString = outputString.Insert(40, $" - {lastSector}");
+            outputString = outputString.Insert(55, $" - {totalSectors} sectors");
+            Logging.Log(outputString, Logging.LoggingLevel.Information);
         }
     }
 }
