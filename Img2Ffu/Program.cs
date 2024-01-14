@@ -29,6 +29,7 @@ using Img2Ffu.Helpers;
 using Img2Ffu.Manifest;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -91,6 +92,48 @@ namespace Img2Ffu
             Buffer.BlockCopy(catalog_second_part, 0, catalog, catalog_first_part.Length + hash.Length, catalog_second_part.Length);
 
             return catalog;
+        }
+
+        private static byte[] GenerateCatalogFile2(byte[] hashData)
+        {
+            string catalog = Path.GetTempFileName();
+            string cdf = Path.GetTempFileName();
+            string hashTableBlob = Path.GetTempFileName();
+
+            File.WriteAllBytes(hashTableBlob, hashData);
+
+            using (StreamWriter streamWriter = new(cdf))
+            {
+                streamWriter.WriteLine("[CatalogHeader]");
+                streamWriter.WriteLine("Name={0}", catalog);
+                streamWriter.WriteLine("[CatalogFiles]");
+                streamWriter.WriteLine("{0}={1}", "HashTable.blob", hashTableBlob);
+            }
+
+            using (Process process = new())
+            {
+                process.StartInfo.FileName = "MakeCat.exe";
+                process.StartInfo.Arguments = string.Format("\"{0}\"", cdf);
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.CreateNoWindow = true;
+                process.StartInfo.RedirectStandardOutput = true;
+
+                process.Start();
+                process.WaitForExit();
+
+                if (process.ExitCode != 0)
+                {
+                    throw new Exception();
+                }
+            }
+
+            byte[] catalogBuffer = File.ReadAllBytes(catalog);
+
+            File.Delete(catalog);
+            File.Delete(hashTableBlob);
+            File.Delete(cdf);
+
+            return catalogBuffer;
         }
 
         private static byte[] GetWriteDescriptorsBuffer(Dictionary<byte[], BlockPayload> payloads, FlashUpdateVersion storeHeaderVersion)
