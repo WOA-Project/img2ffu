@@ -35,7 +35,7 @@ namespace Img2Ffu.Flashing
 {
     internal class BlockPayloadsGenerator
     {
-        private static void ShowProgress(ulong CurrentProgress, ulong TotalProgress, DateTime startTime)
+        private static void ShowProgress(ulong CurrentProgress, ulong TotalProgress, DateTime startTime, bool DisplayRed)
         {
             DateTime now = DateTime.Now;
             TimeSpan timeSoFar = now - startTime;
@@ -70,65 +70,6 @@ namespace Img2Ffu.Flashing
 
         private static readonly byte[] EMPTY_BLOCK_HASH = [0xFA, 0x43, 0x23, 0x9B, 0xCE, 0xE7, 0xB9, 0x7C, 0xA6, 0x2F, 0x00, 0x7C, 0xC6, 0x84, 0x87, 0x56, 0x0A, 0x39, 0xE1, 0x9F, 0x74, 0xF3, 0xDD, 0xE7, 0x48, 0x6D, 0xB3, 0xF9, 0x8D, 0xF8, 0xE4, 0x71];
 
-        internal static KeyValuePair<ByteArrayKey, List<ulong>>[] GetHashedBlocks(FlashPart[] flashParts, uint BlockSize)
-        {
-            ulong CurrentBlockCount = 0;
-            ulong TotalBlockCount = 0;
-            foreach (FlashPart flashPart in flashParts)
-            {
-                TotalBlockCount += (ulong)flashPart.Stream.Length / BlockSize;
-            }
-            Dictionary<ByteArrayKey, List<ulong>> hashedBlocks = [];
-            DateTime startTime = DateTime.Now;
-
-            Logging.Log($"Total Block Count: {TotalBlockCount} - {TotalBlockCount * BlockSize / (1024 * 1024 * 1024)}GB");
-            Logging.Log("Hashing resources...");
-
-            using (SHA256CryptoServiceProvider sha256CryptoServiceProvider = new())
-            {
-                foreach (FlashPart flashPart in flashParts)
-                {
-                    _ = flashPart.Stream.Seek(0, SeekOrigin.Begin);
-
-                    ulong FlashPartStartBlockIndex = flashPart.StartLocation / BlockSize;
-                    ulong FlashPartBlockCount = (ulong)flashPart.Stream.Length / BlockSize;
-
-                    Console.WriteLine("");
-                    Console.WriteLine("============================");
-                    Console.WriteLine(FlashPartStartBlockIndex);
-                    Console.WriteLine(FlashPartBlockCount);
-                    Console.WriteLine("============================");
-
-                    for (uint FlashPartBlockIndex = 0; FlashPartBlockIndex < FlashPartBlockCount; FlashPartBlockIndex++)
-                    {
-                        byte[] BlockBuffer = new byte[BlockSize];
-                        flashPart.Stream.ReadExactly(BlockBuffer, 0, (int)BlockSize);
-                        byte[] BlockHash = sha256CryptoServiceProvider.ComputeHash(BlockBuffer);
-
-                        ulong DiskBlockIndex = FlashPartStartBlockIndex + FlashPartBlockIndex;
-
-                        ByteArrayKey byteArrayKey = new(BlockHash);
-                        if (hashedBlocks.TryGetValue(byteArrayKey, out List<ulong>? value))
-                        {
-                            value.Add(DiskBlockIndex);
-                        }
-                        else
-                        {
-                            hashedBlocks.Add(byteArrayKey, [DiskBlockIndex]);
-                        }
-
-                        CurrentBlockCount++;
-                        ShowProgress(CurrentBlockCount, TotalBlockCount, startTime);
-                    }
-                }
-            }
-
-            Logging.Log("");
-            Logging.Log($"FFU Block Count: {hashedBlocks.Count} - {hashedBlocks.Count * BlockSize / (1024 * 1024 * 1024)}GB");
-
-            return [.. hashedBlocks];
-        }
-
         internal static KeyValuePair<ByteArrayKey, BlockPayload>[] GetGPTPayloads(KeyValuePair<ByteArrayKey, BlockPayload>[] blockPayloads, Stream stream, uint BlockSize, bool IsFixedDiskLength)
         {
             List<KeyValuePair<ByteArrayKey, BlockPayload>> blockPayloadsList = [.. blockPayloads];
@@ -160,9 +101,13 @@ namespace Img2Ffu.Flashing
                 0
             )));
 
-            PartialStream primaryGPTStream = new(stream, 0, BlockSize);
+            byte[] PrimaryGPTBuffer = new byte[(int)BlockSize];
+            stream.Seek(0, SeekOrigin.Begin);
+            stream.Read(PrimaryGPTBuffer, 0, (int)BlockSize);
 
-            KeyValuePair<ByteArrayKey, BlockPayload> primaryGPTKeyValuePair = new KeyValuePair<ByteArrayKey, BlockPayload>(new ByteArrayKey(SHA256.HashData(primaryGPTStream)), new BlockPayload(
+            MemoryStream primaryGPTStream = new(PrimaryGPTBuffer);
+
+            KeyValuePair<ByteArrayKey, BlockPayload> primaryGPTKeyValuePair = new(new ByteArrayKey(SHA256.HashData(primaryGPTStream)), new BlockPayload(
                 new WriteDescriptor()
                 {
                     BlockDataEntry = new BlockDataEntry()
@@ -179,14 +124,18 @@ namespace Img2Ffu.Flashing
                         }
                     ]
                 },
-                stream,
+                primaryGPTStream,
                 0
             ));
 
             if (IsFixedDiskLength)
             {
                 ulong endGPTChunkStartLocation = (ulong)stream.Length - BlockSize;
-                PartialStream secondaryGPTStream = new(stream, (long)endGPTChunkStartLocation, stream.Length);
+                byte[] SecondaryGPTBuffer = new byte[(int)BlockSize];
+                stream.Seek((long)endGPTChunkStartLocation, SeekOrigin.Begin);
+                stream.Read(SecondaryGPTBuffer, 0, (int)BlockSize);
+
+                MemoryStream secondaryGPTStream = new(SecondaryGPTBuffer);
 
                 // Now add back both GPTs
                 // Apparently the first one needs to be added twice?
@@ -210,8 +159,8 @@ namespace Img2Ffu.Flashing
                             }
                         ]
                     },
-                    stream,
-                    endGPTChunkStartLocation
+                    secondaryGPTStream,
+                    0
                 )));
             }
             else
@@ -225,68 +174,124 @@ namespace Img2Ffu.Flashing
             return [.. blockPayloadsList];
         }
 
-        internal static KeyValuePair<ByteArrayKey, BlockPayload>[] GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize)
+        internal static KeyValuePair<ByteArrayKey, BlockPayload>[] GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, uint BlankSectorBufferSize)
         {
-            List<KeyValuePair<ByteArrayKey, BlockPayload>> blockPayloads = [];
+            List<KeyValuePair<ByteArrayKey, BlockPayload>> hashedBlocks = [];
 
             if (flashParts == null)
             {
-                return [.. blockPayloads];
+                return [.. hashedBlocks];
             }
 
-            KeyValuePair<ByteArrayKey, List<ulong>>[] hashedBlocks = GetHashedBlocks(flashParts, BlockSize);
-
-            Logging.Log("Building resource payloads...");
-
-            foreach (KeyValuePair<ByteArrayKey, List<ulong>> hashedBlock in hashedBlocks)
+            ulong CurrentBlockCount = 0;
+            ulong TotalBlockCount = 0;
+            foreach (FlashPart flashPart in flashParts)
             {
-                if (hashedBlock.Value.Count > 0)
+                TotalBlockCount += (ulong)flashPart.Stream.Length / BlockSize;
+            }
+
+            DateTime startTime = DateTime.Now;
+
+            Logging.Log($"Total Block Count: {TotalBlockCount} - {TotalBlockCount * BlockSize / (1024 * 1024 * 1024)}GB");
+            Logging.Log("Hashing resources...");
+
+            bool blankPayloadPhase = false;
+            ulong blankPayloadCount = 0;
+
+            List<KeyValuePair<ByteArrayKey, BlockPayload>> blankBlocks = [];
+
+            foreach (FlashPart flashPart in flashParts)
+            {
+                flashPart.Stream.Seek(0, SeekOrigin.Begin);
+                long totalBlockCount = flashPart.Stream.Length / BlockSize;
+
+                for (uint blockIndex = 0; blockIndex < totalBlockCount; blockIndex++)
                 {
-                    DiskLocation[] diskLocations = hashedBlock.Value.Select(DiskBlockIndex => new DiskLocation() { BlockIndex = (uint)DiskBlockIndex, DiskAccessMethod = 0 }).ToArray();
+                    byte[] blockBuffer = new byte[BlockSize];
+                    long streamPosition = flashPart.Stream.Position;
+                    flashPart.Stream.Read(blockBuffer, 0, (int)BlockSize);
+                    byte[] blockHash = SHA256.HashData(blockBuffer);
 
-                    WriteDescriptor writeDescriptor = new()
+                    if (!StructuralComparisons.StructuralEqualityComparer.Equals(EMPTY_BLOCK_HASH, blockHash))
                     {
-                        BlockDataEntry = new BlockDataEntry
-                        {
-                            BlockCount = 1,
-                            LocationCount = (uint)hashedBlock.Value.Count
-                        },
-                        DiskLocations = diskLocations
-                    };
-
-                    bool found = false;
-                    for (ulong flashPartIndex = 0; flashPartIndex < (ulong)flashParts.LongLength; flashPartIndex++)
-                    {
-                        FlashPart flashPart = flashParts[flashPartIndex];
-                        ulong DiskBlockIndex = diskLocations[0].BlockIndex;
-
-                        ulong FlashPartStartBlockIndex = flashPart.StartLocation / BlockSize;
-                        ulong FlashPartBlockCount = (ulong)flashPart.Stream.Length / BlockSize;
-                        ulong FlashPartEndBlockIndex = FlashPartStartBlockIndex + FlashPartBlockCount - 1;
-
-                        if (FlashPartStartBlockIndex <= DiskBlockIndex && DiskBlockIndex <= FlashPartEndBlockIndex)
-                        {
-                            ulong streamLocation = (DiskBlockIndex - FlashPartStartBlockIndex) * BlockSize;
-
-                            if (StructuralComparisons.StructuralEqualityComparer.Equals(hashedBlock.Key.Bytes, EMPTY_BLOCK_HASH))
+                        hashedBlocks.Add(new KeyValuePair<ByteArrayKey, BlockPayload>(new ByteArrayKey(blockHash), new BlockPayload(
+                            new WriteDescriptor()
                             {
-                                Console.WriteLine("Empty Block added for " + writeDescriptor.DiskLocations.Length + " locations on disk!");
+                                BlockDataEntry = new BlockDataEntry()
+                                {
+                                    BlockCount = 1,
+                                    LocationCount = 1
+                                },
+                                DiskLocations =
+                                [
+                                    new DiskLocation()
+                                    {
+                                        BlockIndex = ((uint)flashPart.StartLocation / BlockSize) + blockIndex,
+                                        DiskAccessMethod = 0
+                                    }
+                                ]
+                            },
+                            flashPart.Stream,
+                            (ulong)streamPosition
+                        )));
+
+                        if (blankPayloadPhase && blankPayloadCount < BlankSectorBufferSize)
+                        {
+                            foreach (KeyValuePair<ByteArrayKey, BlockPayload> blankPayload in blankBlocks)
+                            {
+                                hashedBlocks.Add(blankPayload);
                             }
-
-                            blockPayloads.Add(new(hashedBlock.Key, new BlockPayload(writeDescriptor, flashPart.Stream, streamLocation)));
-                            found = true;
-                            break;
                         }
+
+                        blankPayloadPhase = false;
+                        blankPayloadCount = 0;
+                        blankBlocks.Clear();
+                    }
+                    else if (blankPayloadCount < BlankSectorBufferSize)
+                    {
+                        blankPayloadPhase = true;
+                        blankPayloadCount++;
+
+                        blankBlocks.Add(new KeyValuePair<ByteArrayKey, BlockPayload>(new ByteArrayKey(blockHash), new BlockPayload(
+                            new WriteDescriptor()
+                            {
+                                BlockDataEntry = new BlockDataEntry()
+                                {
+                                    BlockCount = 1,
+                                    LocationCount = 1
+                                },
+                                DiskLocations =
+                                [
+                                    new DiskLocation()
+                                    {
+                                        BlockIndex = ((uint)flashPart.StartLocation / BlockSize) + blockIndex,
+                                        DiskAccessMethod = 0
+                                    }
+                                ]
+                            },
+                            flashPart.Stream,
+                            (ulong)streamPosition
+                        )));
+                    }
+                    else if (blankPayloadCount >= BlankSectorBufferSize && blankBlocks.Count > 0)
+                    {
+                        foreach (KeyValuePair<ByteArrayKey, BlockPayload> blankPayload in blankBlocks)
+                        {
+                            hashedBlocks.Add(blankPayload);
+                        }
+
+                        blankBlocks.Clear();
                     }
 
-                    if (!found)
-                    {
-                        throw new Exception("Could not find flash part for block");
-                    }
+                    CurrentBlockCount++;
+                    ShowProgress(CurrentBlockCount, TotalBlockCount, startTime, blankPayloadPhase);
                 }
             }
 
-            return [.. blockPayloads];
+            Logging.Log("");
+            Logging.Log($"FFU Block Count: {hashedBlocks.Count} - {hashedBlocks.Count * BlockSize / (1024 * 1024 * 1024)}GB");
+
+            return [.. hashedBlocks];
         }
     }
 }

@@ -96,7 +96,7 @@ namespace Img2Ffu.Reader.Data
 
             for (ulong i = 0; i < numberOfBlocksToVerify; i++)
             {
-                Console.Title = $"{i}/{numberOfBlocksToVerify}";
+                Console.Title = $"{i + 1}/{numberOfBlocksToVerify}";
 
                 if (SecurityHeader.AlgorithmId == 0x0000800c) // SHA256 Algorithm ID
                 {

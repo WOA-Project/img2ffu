@@ -67,7 +67,12 @@ namespace Img2Ffu
                         return;
                     }
 
-                    GenerateFFU(o.InputFile, o.FFUFile, o.PlatformID, o.SectorSize, o.BlockSize, o.AntiTheftVersion, o.OperatingSystemVersion, File.ReadAllLines(ExcludedPartitionNamesFilePath), o.MaximumNumberOfBlankBlocksAllowed);
+                    GenerateFFU(o.InputFile, o.FFUFile,
+                    [
+                        "Microsoft Corporation.Surface.Surface Duo.1930",
+                        "OEMB1.*.OEMB1 Product.*",
+                        "OEMEP.*.OEMEP Product.*"
+                    ], o.SectorSize, o.BlockSize, o.AntiTheftVersion, o.OperatingSystemVersion, File.ReadAllLines(ExcludedPartitionNamesFilePath), o.MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion.V2, []);
                 }
                 catch (Exception ex)
                 {
@@ -343,9 +348,9 @@ namespace Img2Ffu
             (FlashPart[] flashParts, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(InputStream, BlockSize, ExcludedPartitionNames, SectorSize);
 
             Logging.Log("Generating Block Payloads...");
-            KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts, BlockSize);
+            KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts, BlockSize, MaximumNumberOfBlankBlocksAllowed);
 
-            bool IsFixedDiskLength = true;
+            bool IsFixedDiskLength = false; // POC!
             BlockPayloads = BlockPayloadsGenerator.GetGPTPayloads(BlockPayloads, InputStream, BlockSize, IsFixedDiskLength);
 
             Logging.Log("Generating write descriptors...");
@@ -363,7 +368,7 @@ namespace Img2Ffu
                 NumberOfStores = 1,
                 StoreIndex = 1,
                 DevicePath = "VenHw(860845C1-BE09-4355-8BC1-30D64FF8E63A)",
-                StorePayloadSize = (ulong)BlockPayloads.LongLength * BlockSize // TODO: Verify this!
+                StorePayloadSize = (ulong)BlockPayloads.LongLength * BlockSize
                 // POC Ends
             };
 
@@ -374,7 +379,7 @@ namespace Img2Ffu
             return (MinSectorCount, partitions, StoreHeaderBuffer, WriteDescriptorBuffer, BlockPayloads, flashParts, InputDisk);
         }
 
-        private static void GenerateFFU(string InputFile, string FFUFile, string PlatformID, uint SectorSize, uint BlockSize, string AntiTheftVersion, string OperatingSystemVersion, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed)
+        private static void GenerateFFU(string InputFile, string FFUFile, string[] PlatformIDs, uint SectorSize, uint BlockSize, string AntiTheftVersion, string OperatingSystemVersion, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion FlashUpdateVersion, List<DeviceTargetInfo> deviceTargetInfos)
         {
             if (File.Exists(FFUFile))
             {
@@ -382,24 +387,9 @@ namespace Img2Ffu
                 return;
             }
 
-            //FlashUpdateVersion FlashUpdateVersion = FlashUpdateVersion.V1;
-            List<DeviceTargetInfo> deviceTargetInfos = [];
-            //string[] PlatformIDs = [PlatformID];
-
-            // POC Begins
-            FlashUpdateVersion FlashUpdateVersion = FlashUpdateVersion.V2;
-            string[] PlatformIDs =
-            [
-                "Microsoft Corporation.Surface.Surface Duo.1930",
-                "OEMB1.*.OEMB1 Product.*",
-                "OEMEP.*.OEMEP Product.*"
-            ];
-            SectorSize = 4096;
-            // POC Ends
-
             Logging.Log($"Input image: {InputFile}");
             Logging.Log($"Destination image: {FFUFile}");
-            Logging.Log($"Platform ID: {PlatformID}");
+            Logging.Log($"Platform IDs: {string.Join("\nPlatform IDs: ", PlatformIDs)}");
             Logging.Log($"Sector Size: {SectorSize}");
             Logging.Log($"Block Size: {BlockSize}");
             Logging.Log($"Anti Theft Version: {AntiTheftVersion}");
@@ -413,8 +403,9 @@ namespace Img2Ffu
             FullFlashManifest FullFlash = new()
             {
                 OSVersion = OperatingSystemVersion,
-                DevicePlatformId2 = PlatformIDs[2],
-                DevicePlatformId1 = PlatformIDs[1],
+                DevicePlatformId3 = PlatformIDs.Count() > 3 ? PlatformIDs[3] : "",
+                DevicePlatformId2 = PlatformIDs.Count() > 2 ? PlatformIDs[2] : "",
+                DevicePlatformId1 = PlatformIDs.Count() > 1 ? PlatformIDs[1] : "",
                 DevicePlatformId0 = PlatformIDs[0],
                 AntiTheftVersion = AntiTheftVersion
             };
