@@ -23,7 +23,9 @@ SOFTWARE.
 */
 using Img2Ffu.Data;
 using Img2Ffu.Helpers;
+using Img2Ffu.Streams;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -127,7 +129,103 @@ namespace Img2Ffu.Flashing
             return [.. hashedBlocks];
         }
 
-        internal static KeyValuePair<ByteArrayKey, BlockPayload>[] GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, ulong MaximumNumberOfBlankBlocksAllowed)
+        internal static KeyValuePair<ByteArrayKey, BlockPayload>[] GetGPTPayloads(KeyValuePair<ByteArrayKey, BlockPayload>[] blockPayloads, Stream stream, uint BlockSize, bool IsFixedDiskLength)
+        {
+            List<KeyValuePair<ByteArrayKey, BlockPayload>> blockPayloadsList = [.. blockPayloads];
+
+            // Erase both GPTs as per spec first
+            blockPayloadsList.Insert(0, new KeyValuePair<ByteArrayKey, BlockPayload>(new ByteArrayKey(EMPTY_BLOCK_HASH), new BlockPayload(
+                new WriteDescriptor()
+                {
+                    BlockDataEntry = new BlockDataEntry()
+                    {
+                        BlockCount = 1,
+                        LocationCount = 2
+                    },
+                    DiskLocations =
+                    [
+                        new DiskLocation()
+                        {
+                            BlockIndex = 0,
+                            DiskAccessMethod = 0
+                        },
+                        new DiskLocation()
+                        {
+                            BlockIndex = 0,
+                            DiskAccessMethod = 2 // From End
+                        }
+                    ]
+                },
+                new MemoryStream(new byte[(int)BlockSize]),
+                0
+            )));
+
+            PartialStream primaryGPTStream = new(stream, 0, BlockSize);
+
+            KeyValuePair<ByteArrayKey, BlockPayload> primaryGPTKeyValuePair = new KeyValuePair<ByteArrayKey, BlockPayload>(new ByteArrayKey(SHA256.HashData(primaryGPTStream)), new BlockPayload(
+                new WriteDescriptor()
+                {
+                    BlockDataEntry = new BlockDataEntry()
+                    {
+                        BlockCount = 1,
+                        LocationCount = 1
+                    },
+                    DiskLocations =
+                    [
+                        new DiskLocation()
+                        {
+                            BlockIndex = 0,
+                            DiskAccessMethod = 0
+                        }
+                    ]
+                },
+                stream,
+                0
+            ));
+
+            if (IsFixedDiskLength)
+            {
+                ulong endGPTChunkStartLocation = (ulong)stream.Length - BlockSize;
+                PartialStream secondaryGPTStream = new(stream, (long)endGPTChunkStartLocation, stream.Length);
+
+                // Now add back both GPTs
+                // Apparently the first one needs to be added twice?
+                blockPayloadsList.Add(primaryGPTKeyValuePair);
+                blockPayloadsList.Add(primaryGPTKeyValuePair);
+
+                blockPayloadsList.Add(new KeyValuePair<ByteArrayKey, BlockPayload>(new ByteArrayKey(SHA256.HashData(secondaryGPTStream)), new BlockPayload(
+                    new WriteDescriptor()
+                    {
+                        BlockDataEntry = new BlockDataEntry()
+                        {
+                            BlockCount = 1,
+                            LocationCount = 1
+                        },
+                        DiskLocations =
+                        [
+                            new DiskLocation()
+                            {
+                                BlockIndex = 0,
+                                DiskAccessMethod = 2
+                            }
+                        ]
+                    },
+                    stream,
+                    endGPTChunkStartLocation
+                )));
+            }
+            else
+            {
+                // Now add back both GPTs
+                // Apparently the first one needs to be added twice?
+                blockPayloadsList.Insert(1, primaryGPTKeyValuePair);
+                blockPayloadsList.Add(primaryGPTKeyValuePair);
+            }
+
+            return [.. blockPayloadsList];
+        }
+
+        internal static KeyValuePair<ByteArrayKey, BlockPayload>[] GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize)
         {
             List<KeyValuePair<ByteArrayKey, BlockPayload>> blockPayloads = [];
 
@@ -170,7 +268,12 @@ namespace Img2Ffu.Flashing
                         {
                             ulong streamLocation = (DiskBlockIndex - FlashPartStartBlockIndex) * BlockSize;
 
-                            blockPayloads.Add(new(hashedBlock.Key, new BlockPayload(writeDescriptor, flashPartIndex, streamLocation)));
+                            if (StructuralComparisons.StructuralEqualityComparer.Equals(hashedBlock.Key.Bytes, EMPTY_BLOCK_HASH))
+                            {
+                                Console.WriteLine("Empty Block added for " + writeDescriptor.DiskLocations.Length + " locations on disk!");
+                            }
+
+                            blockPayloads.Add(new(hashedBlock.Key, new BlockPayload(writeDescriptor, flashPart.Stream, streamLocation)));
                             found = true;
                             break;
                         }

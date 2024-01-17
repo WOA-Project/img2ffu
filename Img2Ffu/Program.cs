@@ -343,7 +343,10 @@ namespace Img2Ffu
             (FlashPart[] flashParts, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(InputStream, BlockSize, ExcludedPartitionNames, SectorSize);
 
             Logging.Log("Generating Block Payloads...");
-            KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts, BlockSize, MaximumNumberOfBlankBlocksAllowed).ToArray();
+            KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts, BlockSize);
+
+            bool IsFixedDiskLength = true;
+            BlockPayloads = BlockPayloadsGenerator.GetGPTPayloads(BlockPayloads, InputStream, BlockSize, IsFixedDiskLength);
 
             Logging.Log("Generating write descriptors...");
             byte[] WriteDescriptorBuffer = GetWriteDescriptorsBuffer(BlockPayloads, FlashUpdateVersion);
@@ -565,7 +568,7 @@ namespace Img2Ffu
             for (ulong CurrentBlockIndex = 0; CurrentBlockIndex < (ulong)BlockPayloads.LongLength; CurrentBlockIndex++)
             {
                 BlockPayload BlockPayload = BlockPayloads.ElementAt((int)CurrentBlockIndex).Value;
-                byte[] BlockBuffer = BlockPayload.ReadBlock(flashParts, BlockSize);
+                byte[] BlockBuffer = BlockPayload.ReadBlock(BlockSize);
 
                 FFUFileStream.Write(BlockBuffer, 0, (int)BlockSize);
 

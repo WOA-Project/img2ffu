@@ -1,4 +1,4 @@
-﻿using Img2Ffu.Structures.Structs;
+﻿using Img2Ffu.Reader.Structs;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
-namespace Img2Ffu.Structures.Data
+namespace Img2Ffu.Reader.Data
 {
     internal class SignedImage
     {

@@ -1,4 +1,4 @@
-﻿namespace Img2Ffu.Structures.Enums
+﻿namespace Img2Ffu.Reader.Enums
 {
     public enum CompressionAlgorithm
     {

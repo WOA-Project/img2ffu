@@ -35,12 +35,12 @@ namespace Img2Ffu.Data
         public uint CatalogSize;
         public uint HashTableSize;
 
-        public byte[] GetResultingBuffer(uint ChunkSize)
+        public byte[] GetResultingBuffer(uint BlockSize)
         {
             using MemoryStream SecurityHeaderStream = new();
             using BinaryWriter binaryWriter = new(SecurityHeaderStream);
 
-            uint ChunkSizeInKb = ChunkSize / 1024;
+            uint ChunkSizeInKb = BlockSize / 1024;
 
             binaryWriter.Write(Size);
             binaryWriter.Write(Encoding.ASCII.GetBytes(Signature));

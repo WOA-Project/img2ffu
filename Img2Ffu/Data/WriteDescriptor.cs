@@ -13,7 +13,7 @@ namespace Img2Ffu.Data
             get; set;
         }
 
-        public byte[] GetResultingBuffer(FlashUpdateVersion storeHeaderVersion)
+        public byte[] GetResultingBuffer(FlashUpdateVersion storeHeaderVersion, uint CompressedDataBlockSize = 0)
         {
             using MemoryStream WriteDescriptorStream = new();
             using BinaryWriter binaryWriter = new(WriteDescriptorStream);
@@ -26,7 +26,7 @@ namespace Img2Ffu.Data
             switch (storeHeaderVersion)
             {
                 case FlashUpdateVersion.V1_COMPRESSED:
-                    binaryWriter.Write((uint)0);
+                    binaryWriter.Write(CompressedDataBlockSize);
                     break;
             }
 

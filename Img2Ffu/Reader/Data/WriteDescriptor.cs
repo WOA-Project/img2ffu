@@ -1,11 +1,11 @@
-﻿using Img2Ffu.Structures.Enums;
-using Img2Ffu.Structures.Structs;
+﻿using Img2Ffu.Reader.Enums;
+using Img2Ffu.Reader.Structs;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Img2Ffu.Structures.Data
+namespace Img2Ffu.Reader.Data
 {
     internal class WriteDescriptor
     {
@@ -17,7 +17,7 @@ namespace Img2Ffu.Structures.Data
 
         public WriteDescriptor(Stream stream, FFUVersion ffuVersion)
         {
-            HasDataSizeField = ffuVersion == FFUVersion.V1_COMPRESS;
+            HasDataSizeField = ffuVersion == FFUVersion.V1_COMPRESSED;
 
             BlockDataEntry = stream.ReadStructure<BlockDataEntry>();
 

@@ -2,7 +2,10 @@
 {
     public enum CompressionAlgorithm
     {
-        None,
-        GZip
+        None = 0,
+        Default = 1,
+        LZNT1 = 2,
+        XPRESS = 3,
+        XPRESS_HUFF = 4
     }
 }

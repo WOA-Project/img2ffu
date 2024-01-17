@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace Img2Ffu.Structures.Structs
+namespace Img2Ffu.Reader.Structs
 {
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
     public struct StoreHeaderV2

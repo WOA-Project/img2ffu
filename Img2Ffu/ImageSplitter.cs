@@ -38,28 +38,28 @@ namespace Img2Ffu
         internal static readonly string BACKUP_BS_NV_PARTITION_NAME = "BACKUP_BS_NV";
         internal static readonly string UEFI_BS_NV_PARTITION_NAME = "UEFI_BS_NV";
 
-        internal static GPT GetGPT(Stream stream, uint chunkSize, uint sectorSize)
+        internal static GPT GetGPT(Stream stream, uint BlockSize, uint sectorSize)
         {
-            byte[] GPTBuffer = new byte[chunkSize];
-            _ = stream.Read(GPTBuffer, 0, (int)chunkSize);
+            byte[] GPTBuffer = new byte[BlockSize];
+            _ = stream.Read(GPTBuffer, 0, (int)BlockSize);
 
             uint requiredGPTBufferSize = GetGPTSize(GPTBuffer, sectorSize);
-            if (chunkSize < requiredGPTBufferSize)
+            if (BlockSize < requiredGPTBufferSize)
             {
-                string errorMessage = $"The chunk size is too small to contain the GPT, the GPT is {requiredGPTBufferSize} bytes long, the chunk size is {chunkSize} bytes long";
+                string errorMessage = $"The Block size is too small to contain the GPT, the GPT is {requiredGPTBufferSize} bytes long, the Block size is {BlockSize} bytes long";
                 Logging.Log(errorMessage, Logging.LoggingLevel.Error);
                 throw new Exception(errorMessage);
             }
 
-            uint sectorsInAChunk = chunkSize / sectorSize;
+            uint sectorsInABlock = BlockSize / sectorSize;
 
             GPT GPT = new(GPTBuffer, sectorSize);
 
-            if (chunkSize > requiredGPTBufferSize && GPT.Partitions.OrderBy(x => x.FirstSector).Any(x => x.FirstSector < sectorsInAChunk))
+            if (BlockSize > requiredGPTBufferSize && GPT.Partitions.OrderBy(x => x.FirstSector).Any(x => x.FirstSector < sectorsInABlock))
             {
-                Partition conflictingPartition = GPT.Partitions.OrderBy(x => x.FirstSector).First(x => x.FirstSector < sectorsInAChunk);
+                Partition conflictingPartition = GPT.Partitions.OrderBy(x => x.FirstSector).First(x => x.FirstSector < sectorsInABlock);
 
-                string errorMessage = $"The chunk size is too big to contain only the GPT, the GPT is {requiredGPTBufferSize} bytes long, the chunk size is {chunkSize} bytes long. The overlapping partition is {conflictingPartition.Name}";
+                string errorMessage = $"The Block size is too big to contain only the GPT, the GPT is {requiredGPTBufferSize} bytes long, the Block size is {BlockSize} bytes long. The overlapping partition is {conflictingPartition.Name}";
                 Logging.Log(errorMessage, Logging.LoggingLevel.Error);
                 throw new Exception(errorMessage);
             }
@@ -67,14 +67,14 @@ namespace Img2Ffu
             return GPT;
         }
 
-        internal static (FlashPart[], List<Partition> partitions) GetImageSlices(Stream stream, uint chunkSize, string[] excluded, uint sectorSize)
+        internal static (FlashPart[], List<Partition> partitions) GetImageSlices(Stream stream, uint BlockSize, string[] excluded, uint sectorSize)
         {
-            GPT GPT = GetGPT(stream, chunkSize, sectorSize);
-            uint sectorsInAChunk = chunkSize / sectorSize;
+            GPT GPT = GetGPT(stream, BlockSize, sectorSize);
+            uint sectorsInABlock = BlockSize / sectorSize;
 
             Logging.Log($"Sector Size: {sectorSize}");
-            Logging.Log($"Chunk Size: {chunkSize}");
-            Logging.Log($"Sectors in a chunk: {sectorsInAChunk}");
+            Logging.Log($"Block Size: {BlockSize}");
+            Logging.Log($"Sectors in a Block: {sectorsInABlock}");
 
             List<Partition> Partitions = GPT.Partitions;
 
@@ -107,7 +107,7 @@ namespace Img2Ffu
                 $"{"First".PadRight(maxPartitionLastSector)} - " +
                 $"{"Last".PadRight(maxPartitionLastSector)} - " +
                 $"{"Sectors".PadRight(maxPartitionLastSector)} - " +
-                $"{"Chunks".PadRight(maxPartitionLastSector)}",
+                $"{"Blocks".PadRight(maxPartitionLastSector)}",
                 Logging.LoggingLevel.Information);
             Logging.Log("");
 
@@ -135,7 +135,7 @@ namespace Img2Ffu
                     $"{(partition.FirstSector + "s").PadRight(maxPartitionLastSector)} - " +
                     $"{(partition.LastSector + "s").PadRight(maxPartitionLastSector)} - " +
                     $"{(partition.SizeInSectors + "s").PadRight(maxPartitionLastSector)} - " +
-                    $"{((partition.SizeInSectors / (double)sectorsInAChunk) + "c").PadRight(maxPartitionLastSector)}",
+                    $"{((partition.SizeInSectors / (double)sectorsInABlock) + "c").PadRight(maxPartitionLastSector)}",
                     isExcluded ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
 
                 if (isExcluded)
@@ -148,18 +148,38 @@ namespace Img2Ffu
                         ulong firstSector = currentFlashPart.StartLocation / sectorSize;
                         ulong lastSector = firstSector + totalSectors - 1;
 
-                        if (firstSector % sectorsInAChunk != 0)
+                        if (firstSector % sectorsInABlock != 0)
                         {
-                            string errorMessage = $"- The stream doesn't start on a chunk boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {firstSector % sectorsInAChunk}, a chunk is {sectorsInAChunk} sectors";
+                            string errorMessage = $"- The stream doesn't start on a Block boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {firstSector % sectorsInABlock}, a Block is {sectorsInABlock} sectors";
                             Logging.Log(errorMessage, Logging.LoggingLevel.Error);
                             throw new Exception(errorMessage);
                         }
 
-                        if ((lastSector + 1) % sectorsInAChunk != 0)
+                        if ((lastSector + 1) % sectorsInABlock != 0)
                         {
-                            string errorMessage = $"- The stream doesn't end on a chunk boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {(lastSector + 1) % sectorsInAChunk}, a chunk is {sectorsInAChunk} sectors";
+                            string errorMessage = $"- The stream doesn't end on a Block boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {(lastSector + 1) % sectorsInABlock}, a Block is {sectorsInABlock} sectors";
                             Logging.Log(errorMessage, Logging.LoggingLevel.Error);
-                            throw new Exception(errorMessage);
+                            //throw new Exception(errorMessage);
+                            // TODO: Improve here
+
+                            ulong overflowSectors = (lastSector + 1) % sectorsInABlock;
+                            ulong sectorsToAddAsPadding = sectorsInABlock - overflowSectors;
+                            ulong bytesToAddAsPadding = sectorsToAddAsPadding * sectorSize;
+
+                            ulong newEnding = currentFlashPart.StartLocation + (ulong)currentFlashPart.Stream.Length + bytesToAddAsPadding;
+                            long convertedEnding = (long)newEnding;
+
+                            currentFlashPart.Stream = new PartialStream(stream, (long)currentFlashPart.StartLocation, convertedEnding);
+
+                            totalSectors = (ulong)currentFlashPart.Stream.Length / sectorSize;
+                            firstSector = currentFlashPart.StartLocation / sectorSize;
+                            lastSector = firstSector + totalSectors - 1;
+
+                            if ((lastSector + 1) % sectorsInABlock != 0)
+                            {
+                                Logging.Log(errorMessage, Logging.LoggingLevel.Error);
+                                throw new Exception(errorMessage);
+                            }
                         }
 
                         flashParts.Add(currentFlashPart);
@@ -186,18 +206,38 @@ namespace Img2Ffu
                     ulong firstSector = currentFlashPart.StartLocation / sectorSize;
                     ulong lastSector = firstSector + totalSectors - 1;
 
-                    if (firstSector % sectorsInAChunk != 0)
+                    if (firstSector % sectorsInABlock != 0)
                     {
-                        string errorMessage = $"- The stream doesn't start on a chunk boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {firstSector % sectorsInAChunk}, a chunk is {sectorsInAChunk} sectors";
+                        string errorMessage = $"- The stream doesn't start on a Block boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {firstSector % sectorsInABlock}, a Block is {sectorsInABlock} sectors";
                         Logging.Log(errorMessage, Logging.LoggingLevel.Error);
                         throw new Exception(errorMessage);
                     }
 
-                    if ((lastSector + 1) % sectorsInAChunk != 0)
+                    if ((lastSector + 1) % sectorsInABlock != 0)
                     {
-                        string errorMessage = $"- The stream doesn't end on a chunk boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {(lastSector + 1) % sectorsInAChunk}, a chunk is {sectorsInAChunk} sectors";
+                        string errorMessage = $"- The stream doesn't end on a Block boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {(lastSector + 1) % sectorsInABlock}, a Block is {sectorsInABlock} sectors";
                         Logging.Log(errorMessage, Logging.LoggingLevel.Error);
-                        throw new Exception(errorMessage);
+                        //throw new Exception(errorMessage);
+                        // TODO: Improve here
+
+                        ulong overflowSectors = (lastSector + 1) % sectorsInABlock;
+                        ulong sectorsToAddAsPadding = sectorsInABlock - overflowSectors;
+                        ulong bytesToAddAsPadding = sectorsToAddAsPadding * sectorSize;
+
+                        ulong newEnding = currentFlashPart.StartLocation + (ulong)currentFlashPart.Stream.Length + bytesToAddAsPadding;
+                        long convertedEnding = (long)newEnding;
+
+                        currentFlashPart.Stream = new PartialStream(stream, (long)currentFlashPart.StartLocation, convertedEnding);
+
+                        totalSectors = (ulong)currentFlashPart.Stream.Length / sectorSize;
+                        firstSector = currentFlashPart.StartLocation / sectorSize;
+                        lastSector = firstSector + totalSectors - 1;
+
+                        if ((lastSector + 1) % sectorsInABlock != 0)
+                        {
+                            Logging.Log(errorMessage, Logging.LoggingLevel.Error);
+                            throw new Exception(errorMessage);
+                        }
                     }
 
                     flashParts.Add(currentFlashPart);
@@ -205,37 +245,33 @@ namespace Img2Ffu
             }
 
             Logging.Log("");
-            Logging.Log("Inserting GPT back into the FFU image");
-            flashParts.Insert(0, new FlashPart(new MemoryStream(GPT.GPTBuffer), 0));
-
-            Logging.Log("");
             Logging.Log("Final Flash Parts");
             Logging.Log("");
-            FlashPart[] finalFlashParts = [.. flashParts.OrderBy(x => x.StartLocation)];
-            PrintFlashParts(finalFlashParts, sectorSize, chunkSize);
+            FlashPart[] finalFlashParts = [.. flashParts];
+            PrintFlashParts(finalFlashParts, sectorSize, BlockSize);
             Logging.Log("");
 
             return (finalFlashParts, Partitions);
         }
 
-        internal static void PrintFlashParts(FlashPart[] finalFlashParts, uint sectorSize, uint chunkSize)
+        internal static void PrintFlashParts(FlashPart[] finalFlashParts, uint sectorSize, uint BlockSize)
         {
             for (int i = 0; i < finalFlashParts.Length; i++)
             {
                 FlashPart flashPart = finalFlashParts[i];
-                PrintFlashPart(flashPart, sectorSize, chunkSize, $"FlashPart[{i}]");
+                PrintFlashPart(flashPart, sectorSize, BlockSize, $"FlashPart[{i}]");
             }
         }
 
-        internal static void PrintFlashPart(FlashPart flashPart, uint sectorSize, uint chunkSize, string name)
+        internal static void PrintFlashPart(FlashPart flashPart, uint sectorSize, uint BlockSize, string name)
         {
-            uint sectorsInAChunk = chunkSize / sectorSize;
+            uint sectorsInABlock = BlockSize / sectorSize;
 
             ulong totalSectors = (ulong)flashPart.Stream.Length / sectorSize;
             ulong firstSector = flashPart.StartLocation / sectorSize;
             ulong lastSector = firstSector + totalSectors - 1;
 
-            Logging.Log($"{name} - {firstSector}s - {lastSector}s - {totalSectors}s - {totalSectors / (double)sectorsInAChunk}c", Logging.LoggingLevel.Information);
+            Logging.Log($"{name} - {firstSector}s - {lastSector}s - {totalSectors}s - {totalSectors / (double)sectorsInABlock}c", Logging.LoggingLevel.Information);
         }
     }
 }

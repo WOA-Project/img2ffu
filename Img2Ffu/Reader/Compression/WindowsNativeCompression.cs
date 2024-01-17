@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace Img2Ffu.Structures.Compression
+namespace Img2Ffu.Reader.Compression
 {
     internal class WindowsNativeCompression
     {

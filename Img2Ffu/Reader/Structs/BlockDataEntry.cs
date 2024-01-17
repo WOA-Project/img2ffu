@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace Img2Ffu.Structures.Structs
+namespace Img2Ffu.Reader.Structs
 {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct BlockDataEntry

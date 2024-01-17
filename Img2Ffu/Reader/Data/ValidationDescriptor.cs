@@ -1,8 +1,8 @@
-﻿using Img2Ffu.Structures.Structs;
+﻿using Img2Ffu.Reader.Structs;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Img2Ffu.Structures.Data
+namespace Img2Ffu.Reader.Data
 {
     internal class ValidationDescriptor
     {

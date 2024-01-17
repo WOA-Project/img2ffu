@@ -1,13 +1,13 @@
-﻿using Img2Ffu.Structures.Compression;
-using Img2Ffu.Structures.Enums;
-using Img2Ffu.Structures.Structs;
+﻿using Img2Ffu.Reader.Compression;
+using Img2Ffu.Reader.Enums;
+using Img2Ffu.Reader.Structs;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Img2Ffu.Structures.Data
+namespace Img2Ffu.Reader.Data
 {
     internal class ImageFlash
     {

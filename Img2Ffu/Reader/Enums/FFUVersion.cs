@@ -1,9 +1,9 @@
-﻿namespace Img2Ffu.Structures.Enums
+﻿namespace Img2Ffu.Reader.Enums
 {
     internal enum FFUVersion
     {
         V1,
-        V1_COMPRESS,
+        V1_COMPRESSED,
         V2
     }
 }

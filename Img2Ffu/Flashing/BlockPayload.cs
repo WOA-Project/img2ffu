@@ -26,20 +26,18 @@ using System.IO;
 
 namespace Img2Ffu.Flashing
 {
-    public class BlockPayload(WriteDescriptor WriteDescriptor, ulong StreamIndex, ulong StreamLocation)
+    public class BlockPayload(WriteDescriptor WriteDescriptor, Stream Stream, ulong StreamLocation)
     {
         public WriteDescriptor WriteDescriptor = WriteDescriptor;
-        public ulong FlashPartIndex = StreamIndex;
+        public Stream Stream = Stream;
         public ulong FlashPartStreamLocation = StreamLocation;
 
-        internal byte[] ReadBlock(FlashPart[] flashParts, ulong BlockSize)
+        internal byte[] ReadBlock(ulong BlockSize)
         {
-            FlashPart FlashPart = flashParts[FlashPartIndex];
-            Stream FlashPartStream = FlashPart.Stream;
-            _ = FlashPartStream.Seek((long)FlashPartStreamLocation, SeekOrigin.Begin);
+            _ = Stream.Seek((long)FlashPartStreamLocation, SeekOrigin.Begin);
 
             byte[] BlockBuffer = new byte[BlockSize];
-            _ = FlashPartStream.Read(BlockBuffer, 0, (int)BlockSize);
+            _ = Stream.Read(BlockBuffer, 0, (int)BlockSize);
 
             return BlockBuffer;
         }

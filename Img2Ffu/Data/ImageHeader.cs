@@ -33,7 +33,7 @@ namespace Img2Ffu.Data
             get; set;
         }
 
-        public byte[] GetResultingBuffer(uint ChunkSize, bool HasDeviceTargetInfo, uint DeviceTargetInfosCount)
+        public byte[] GetResultingBuffer(uint BlockSize, bool HasDeviceTargetInfo, uint DeviceTargetInfosCount)
         {
             using MemoryStream ImageHeaderStream = new();
             using BinaryWriter binaryWriter = new(ImageHeaderStream);
@@ -41,7 +41,7 @@ namespace Img2Ffu.Data
             binaryWriter.Write(HasDeviceTargetInfo ? 28u : 24u); // Size
             binaryWriter.Write(Encoding.ASCII.GetBytes("ImageFlash  ")); // Signature
             binaryWriter.Write(ManifestLength); // Manifest Length
-            binaryWriter.Write(ChunkSize / 1024); // Chunk Size in KB
+            binaryWriter.Write(BlockSize / 1024); // Chunk Size in KB
 
             if (HasDeviceTargetInfo)
             {

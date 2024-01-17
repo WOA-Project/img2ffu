@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Img2Ffu.Structures.Compression
+namespace Img2Ffu.Reader.Compression
 {
     [Flags]
     public enum WindowsNativeCompressionAlgorithm

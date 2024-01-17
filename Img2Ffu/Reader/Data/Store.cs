@@ -1,10 +1,10 @@
-﻿using Img2Ffu.Structures.Enums;
-using Img2Ffu.Structures.Structs;
+﻿using Img2Ffu.Reader.Enums;
+using Img2Ffu.Reader.Structs;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Img2Ffu.Structures.Data
+namespace Img2Ffu.Reader.Data
 {
     internal class Store
     {
@@ -52,7 +52,7 @@ namespace Img2Ffu.Structures.Data
                         DevicePath = unicodeEncoding.GetString(stringBytes);
                         break;
                     }
-                case FFUVersion.V1_COMPRESS:
+                case FFUVersion.V1_COMPRESSED:
                     {
                         using BinaryReader binaryReader = new(stream, Encoding.ASCII, true);
                         CompressionAlgorithm = binaryReader.ReadUInt32();
@@ -87,7 +87,7 @@ namespace Img2Ffu.Structures.Data
         private FFUVersion GetFFUVersion() => (StoreHeader.MajorVersion, StoreHeader.FullFlashMajorVersion) switch
         {
             (1, 2) => FFUVersion.V1,
-            (1, 3) => FFUVersion.V1_COMPRESS,
+            (1, 3) => FFUVersion.V1_COMPRESSED,
             (2, 2) => FFUVersion.V2,
             _ => throw new InvalidDataException($"Unsupported FFU Store Format! MajorVersion: {StoreHeader.MajorVersion} FullFlashMajorVersion: {StoreHeader.FullFlashMajorVersion}"),
         };
