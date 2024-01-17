@@ -30,7 +30,7 @@ namespace Img2Ffu
             private ulong _FirstSector;
             private ulong _LastSector;
 
-            public required string Name;            // 0x48
+            public string Name;            // 0x48
             public Guid PartitionTypeGuid; // 0x10
             public Guid PartitionGuid;     // 0x10
             internal ulong Attributes;      // 0x08

@@ -36,7 +36,7 @@ namespace Img2Ffu.Data
         private ushort FullFlashMinorVersion = 0;
 
         // Size is 0xC0
-        public required string[] PlatformIds
+        public string[] PlatformIds
         {
             get; set;
         }
@@ -85,9 +85,9 @@ namespace Img2Ffu.Data
         // Must be followed by the unicode string of the device path
         // So the total size would be doubled from DevicePathLength in bytes in the binary
 
-        private required byte[] DevicePathBuffer;
+        private byte[] DevicePathBuffer;
 
-        public required string DevicePath
+        public string DevicePath
         {
             get; set;
         }

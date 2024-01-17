@@ -31,9 +31,9 @@ namespace Img2Ffu.Manifest
         public uint UsedSectors;
         public Guid? Type;
         public uint TotalSectors;
-        public required string Primary;
-        public required string Name;
-        public required string FileSystem;
+        public string Primary;
+        public string Name;
+        public string FileSystem;
         public uint? ByteAlignment;
         public uint? ClusterSize;
         public bool? UseAllSpace;
