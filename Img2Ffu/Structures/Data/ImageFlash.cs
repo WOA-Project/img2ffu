@@ -15,14 +15,13 @@ namespace Img2Ffu.Structures.Data
         public string ManifestData = "";
         public byte[] Padding = [];
         public readonly List<Store> Stores = [];
-        private readonly long DataBlocksPosition;
 
-        private readonly Stream Stream;
+        private readonly long DataBlocksPosition;
+        private readonly long InitialStreamPosition;
 
         public ImageFlash(Stream stream)
         {
-            Stream = stream;
-
+            InitialStreamPosition = stream.Position;
             ImageHeader = stream.ReadStructure<ImageHeader>();
 
             if (ImageHeader.Signature != "ImageFlash  ")
@@ -57,7 +56,36 @@ namespace Img2Ffu.Structures.Data
             DataBlocksPosition = stream.Position;
         }
 
-        public byte[] GetDataBlock(ulong dataBlockIndex)
+        public ulong GetImageBlockCount()
+        {
+            ulong imageBlockCount = (ulong)(DataBlocksPosition - InitialStreamPosition) / (ImageHeader.ChunkSize * 1024);
+            ulong storeBlockCount = GetDataBlockCount();
+            return imageBlockCount + storeBlockCount;
+        }
+
+        public byte[] GetImageBlock(Stream Stream, ulong dataBlockIndex)
+        {
+            ulong imageBlockCount = (ulong)(DataBlocksPosition - InitialStreamPosition) / (ImageHeader.ChunkSize * 1024);
+
+            // The data block is within the image headers
+            if (dataBlockIndex < imageBlockCount)
+            {
+                byte[] dataBlock = new byte[(ImageHeader.ChunkSize * 1024)];
+                ulong dataBlockPosition = (ulong)InitialStreamPosition + (dataBlockIndex * (ImageHeader.ChunkSize * 1024));
+
+                _ = Stream.Seek((long)dataBlockPosition, SeekOrigin.Begin);
+                _ = Stream.Read(dataBlock, 0, dataBlock.Length);
+
+                return dataBlock;
+            }
+            // The data block is within the store data blocks, those may be compressed
+            else
+            {
+                return GetDataBlock(Stream, dataBlockIndex - imageBlockCount);
+            }
+        }
+
+        public byte[] GetDataBlock(Stream Stream, ulong dataBlockIndex)
         {
             ulong dataBlockIndexOffset = 0;
             for (ulong storeIndex = 0; storeIndex < (ulong)Stores.Count; storeIndex++)
@@ -65,7 +93,7 @@ namespace Img2Ffu.Structures.Data
                 ulong storeDataBlockCount = GetDataBlockCountForStore(storeIndex);
                 if (dataBlockIndexOffset + storeDataBlockCount > dataBlockIndex)
                 {
-                    return GetDataBlock(storeIndex, dataBlockIndex - dataBlockIndexOffset);
+                    return GetDataBlock(Stream, storeIndex, dataBlockIndex - dataBlockIndexOffset);
                 }
 
                 dataBlockIndexOffset += storeDataBlockCount;
@@ -89,7 +117,7 @@ namespace Img2Ffu.Structures.Data
             return (ulong)Stores[(int)storeIndex].WriteDescriptors.LongCount();
         }
 
-        public byte[] GetDataBlock(ulong storeIndex, ulong dataBlockIndex)
+        public byte[] GetDataBlock(Stream Stream, ulong storeIndex, ulong dataBlockIndex)
         {
             ulong dataBlockPosition = (ulong)DataBlocksPosition;
             for (ulong s = 0; s < storeIndex; s++)

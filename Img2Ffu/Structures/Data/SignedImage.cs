@@ -96,15 +96,9 @@ namespace Img2Ffu.Structures.Data
 
         public void VerifyFFU()
         {
-            uint sizeOfBlock = SecurityHeader.ChunkSizeInKB * 1024;
-            uint ImageHeaderPosition = GetImageHeaderPosition();
-
-            ulong numberOfDataBlocksToVerify = Image.GetDataBlockCount();
-            ulong imageHeadersBlockCount = (DataBlocksPosition - ImageHeaderPosition) / sizeOfBlock;
-            ulong numberOfBlocksToVerify = numberOfDataBlocksToVerify + imageHeadersBlockCount;
+            ulong numberOfBlocksToVerify = Image.GetImageBlockCount();
 
             long oldPosition = Stream.Position;
-            _ = Stream.Seek(ImageHeaderPosition, SeekOrigin.Begin);
 
             using BinaryReader binaryReader = new(Stream, Encoding.ASCII, true);
             using BinaryReader hashTableBinaryReader = new(new MemoryStream(TableOfHashes));
@@ -115,8 +109,7 @@ namespace Img2Ffu.Structures.Data
 
                 if (SecurityHeader.AlgorithmId == 0x0000800c) // SHA256 Algorithm ID
                 {
-                    byte[] block = i < imageHeadersBlockCount ? binaryReader.ReadBytes((int)sizeOfBlock) : Image.GetDataBlock(i - imageHeadersBlockCount);
-
+                    byte[] block = Image.GetImageBlock(Stream, i);
                     byte[] hash = SHA256.HashData(block);
                     byte[] hashTableHash = BlockHashes.ElementAt((int)i);
 
