@@ -142,9 +142,6 @@ namespace Img2Ffu.Data
             binaryWriter.Write(FlashOnlyTableCount);
             binaryWriter.Write(FinalTableIndex);
             binaryWriter.Write(FinalTableCount);
-            binaryWriter.Write(NumberOfStores);
-            binaryWriter.Write(StoreIndex);
-            binaryWriter.Write(StorePayloadSize);
 
             switch (storeHeaderVersion)
             {
@@ -152,6 +149,9 @@ namespace Img2Ffu.Data
                     binaryWriter.Write(CompressionAlgorithm);
                     break;
                 case FlashUpdateVersion.V2:
+                    binaryWriter.Write(NumberOfStores);
+                    binaryWriter.Write(StoreIndex);
+                    binaryWriter.Write(StorePayloadSize);
                     binaryWriter.Write(DevicePathLength);
                     binaryWriter.Write(DevicePathBuffer);
                     break;
