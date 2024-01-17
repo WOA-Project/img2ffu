@@ -19,6 +19,7 @@ namespace Img2Ffu.Structures.Data
         private readonly long DataBlocksPosition;
         private readonly long InitialStreamPosition;
 
+
         public ImageFlash(Stream stream)
         {
             InitialStreamPosition = stream.Position;
@@ -56,6 +57,7 @@ namespace Img2Ffu.Structures.Data
             DataBlocksPosition = stream.Position;
         }
 
+
         public ulong GetImageBlockCount()
         {
             ulong imageBlockCount = (ulong)(DataBlocksPosition - InitialStreamPosition) / (ImageHeader.ChunkSize * 1024);
@@ -85,22 +87,6 @@ namespace Img2Ffu.Structures.Data
             }
         }
 
-        public byte[] GetDataBlock(Stream Stream, ulong dataBlockIndex)
-        {
-            ulong dataBlockIndexOffset = 0;
-            for (ulong storeIndex = 0; storeIndex < (ulong)Stores.Count; storeIndex++)
-            {
-                ulong storeDataBlockCount = GetDataBlockCountForStore(storeIndex);
-                if (dataBlockIndexOffset + storeDataBlockCount > dataBlockIndex)
-                {
-                    return GetDataBlock(Stream, storeIndex, dataBlockIndex - dataBlockIndexOffset);
-                }
-
-                dataBlockIndexOffset += storeDataBlockCount;
-            }
-
-            throw new Exception("Invalid data block index value");
-        }
 
         public ulong GetDataBlockCount()
         {
@@ -112,12 +98,30 @@ namespace Img2Ffu.Structures.Data
             return dataBlockCount;
         }
 
-        public ulong GetDataBlockCountForStore(ulong storeIndex)
+        public byte[] GetDataBlock(Stream Stream, ulong dataBlockIndex)
+        {
+            ulong dataBlockIndexOffset = 0;
+            for (ulong storeIndex = 0; storeIndex < (ulong)Stores.Count; storeIndex++)
+            {
+                ulong storeDataBlockCount = GetStoreDataBlockCount(storeIndex);
+                if (dataBlockIndexOffset + storeDataBlockCount > dataBlockIndex)
+                {
+                    return GetStoreDataBlock(Stream, storeIndex, dataBlockIndex - dataBlockIndexOffset);
+                }
+
+                dataBlockIndexOffset += storeDataBlockCount;
+            }
+
+            throw new Exception("Invalid data block index value");
+        }
+
+
+        public ulong GetStoreDataBlockCount(ulong storeIndex)
         {
             return (ulong)Stores[(int)storeIndex].WriteDescriptors.LongCount();
         }
 
-        public byte[] GetDataBlock(Stream Stream, ulong storeIndex, ulong dataBlockIndex)
+        public byte[] GetStoreDataBlock(Stream Stream, ulong storeIndex, ulong dataBlockIndex)
         {
             ulong dataBlockPosition = (ulong)DataBlocksPosition;
             for (ulong s = 0; s < storeIndex; s++)

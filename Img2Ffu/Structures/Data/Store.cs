@@ -1,4 +1,5 @@
-﻿using Img2Ffu.Structures.Structs;
+﻿using Img2Ffu.Structures.Enums;
+using Img2Ffu.Structures.Structs;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -15,6 +16,7 @@ namespace Img2Ffu.Structures.Data
         public readonly List<WriteDescriptor> WriteDescriptors = [];
         public readonly List<string> PlatformIDs = [];
         public byte[] Padding = [];
+        public readonly FFUVersion FFUVersion;
 
         public Store(Stream stream)
         {
@@ -37,26 +39,25 @@ namespace Img2Ffu.Structures.Data
                 }
             }
 
-            bool isFFUV2_2 = StoreHeader.MajorVersion == 2 && StoreHeader.FullFlashMajorVersion == 2;
-            bool isFFUV1_3 = StoreHeader.MajorVersion == 1 && StoreHeader.FullFlashMajorVersion == 3;
-            bool isFFUV1_2 = StoreHeader.MajorVersion == 2 && StoreHeader.FullFlashMajorVersion == 2;
+            FFUVersion = GetFFUVersion();
 
-            if (isFFUV2_2)
+            switch (FFUVersion)
             {
-                StoreHeaderV2 = stream.ReadStructure<StoreHeaderV2>();
-                byte[] stringBytes = new byte[StoreHeaderV2.DevicePathLength * 2];
-                _ = stream.Read(stringBytes, 0, stringBytes.Length);
-                UnicodeEncoding unicodeEncoding = new();
-                DevicePath = unicodeEncoding.GetString(stringBytes);
-            }
-            else if (isFFUV1_3)
-            {
-                using BinaryReader binaryReader = new(stream, Encoding.ASCII, true);
-                CompressionAlgorithm = binaryReader.ReadUInt32();
-            }
-            else if (isFFUV1_2)
-            {
-                throw new InvalidDataException($"Unsupported FFU Store Format! MajorVersion: {StoreHeader.MajorVersion} FullFlashMajorVersion: {StoreHeader.FullFlashMajorVersion}");
+                case FFUVersion.V2:
+                    {
+                        StoreHeaderV2 = stream.ReadStructure<StoreHeaderV2>();
+                        byte[] stringBytes = new byte[StoreHeaderV2.DevicePathLength * 2];
+                        _ = stream.Read(stringBytes, 0, stringBytes.Length);
+                        UnicodeEncoding unicodeEncoding = new();
+                        DevicePath = unicodeEncoding.GetString(stringBytes);
+                        break;
+                    }
+                case FFUVersion.V1_COMPRESS:
+                    {
+                        using BinaryReader binaryReader = new(stream, Encoding.ASCII, true);
+                        CompressionAlgorithm = binaryReader.ReadUInt32();
+                        break;
+                    }
             }
 
             for (uint i = 0; i < StoreHeader.ValidateDescriptorCount; i++)
@@ -66,7 +67,7 @@ namespace Img2Ffu.Structures.Data
 
             for (uint i = 0; i < StoreHeader.WriteDescriptorCount; i++)
             {
-                WriteDescriptors.Add(new WriteDescriptor(stream, isFFUV1_3));
+                WriteDescriptors.Add(new WriteDescriptor(stream, FFUVersion));
             }
 
             long Position = stream.Position;
@@ -82,5 +83,13 @@ namespace Img2Ffu.Structures.Data
         {
             return $"{{StoreHeader: {StoreHeader}, StoreHeaderV2: {StoreHeaderV2}, DevicePath: {DevicePath}}}";
         }
+
+        private FFUVersion GetFFUVersion() => (StoreHeader.MajorVersion, StoreHeader.FullFlashMajorVersion) switch
+        {
+            (1, 2) => FFUVersion.V1,
+            (1, 3) => FFUVersion.V1_COMPRESS,
+            (2, 2) => FFUVersion.V2,
+            _ => throw new InvalidDataException($"Unsupported FFU Store Format! MajorVersion: {StoreHeader.MajorVersion} FullFlashMajorVersion: {StoreHeader.FullFlashMajorVersion}"),
+        };
     }
 }

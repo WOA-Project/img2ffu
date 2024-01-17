@@ -1,4 +1,5 @@
-﻿using Img2Ffu.Structures.Structs;
+﻿using Img2Ffu.Structures.Enums;
+using Img2Ffu.Structures.Structs;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,16 +11,17 @@ namespace Img2Ffu.Structures.Data
     {
         public BlockDataEntry BlockDataEntry;
         public uint DataSize;
-        public readonly List<DiskLocation> DiskLocations = [];
-        public bool IsFFUV1_3 = false;
 
-        public WriteDescriptor(Stream stream, bool isFFUV1_3)
+        public readonly List<DiskLocation> DiskLocations = [];
+        private readonly bool HasDataSizeField;
+
+        public WriteDescriptor(Stream stream, FFUVersion ffuVersion)
         {
-            IsFFUV1_3 = isFFUV1_3;
+            HasDataSizeField = ffuVersion == FFUVersion.V1_COMPRESS;
 
             BlockDataEntry = stream.ReadStructure<BlockDataEntry>();
 
-            if (isFFUV1_3)
+            if (HasDataSizeField)
             {
                 using BinaryReader binaryReader = new(stream, Encoding.ASCII, true);
                 DataSize = binaryReader.ReadUInt32();
@@ -31,18 +33,18 @@ namespace Img2Ffu.Structures.Data
             }
         }
 
-        public WriteDescriptor(BlockDataEntry blockDataEntry, List<DiskLocation> diskLocations, uint dataSize)
+        public WriteDescriptor(BlockDataEntry blockDataEntry, List<DiskLocation> diskLocations, uint compressedDataBlockSize)
         {
-            IsFFUV1_3 = true;
+            HasDataSizeField = true;
 
             BlockDataEntry = blockDataEntry;
             DiskLocations = diskLocations;
-            DataSize = dataSize;
+            DataSize = compressedDataBlockSize;
         }
 
-        public WriteDescriptor(BlockDataEntry blockDataEntry, List<DiskLocation> diskLocations)
+        public WriteDescriptor(BlockDataEntry blockDataEntry, List<DiskLocation> diskLocations, FFUVersion ffuVersion)
         {
-            IsFFUV1_3 = false;
+            HasDataSizeField = false;
 
             BlockDataEntry = blockDataEntry;
             DiskLocations = diskLocations;
@@ -61,7 +63,7 @@ namespace Img2Ffu.Structures.Data
 
             bytes.AddRange(BlockDataEntry.GetBytes());
 
-            if (IsFFUV1_3)
+            if (HasDataSizeField)
             {
                 bytes.AddRange(BitConverter.GetBytes(DataSize));
             }

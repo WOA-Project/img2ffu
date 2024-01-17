@@ -22,7 +22,6 @@ namespace Img2Ffu.Structures.Data
         public X509Certificate Certificate;
 
         private readonly Stream Stream;
-        private readonly ulong DataBlocksPosition;
 
         public SignedImage(Stream stream)
         {
@@ -58,8 +57,6 @@ namespace Img2Ffu.Structures.Data
 
             Image = new ImageFlash(stream);
 
-            DataBlocksPosition = (ulong)stream.Position;
-
             ParseBlockHashes();
         }
 
@@ -67,13 +64,7 @@ namespace Img2Ffu.Structures.Data
         {
             BlockHashes.Clear();
 
-            uint sizeOfBlock = SecurityHeader.ChunkSizeInKB * 1024;
-            uint ImageHeaderPosition = GetImageHeaderPosition();
-
-            ulong numberOfDataBlocksToVerify = Image.GetDataBlockCount();
-            ulong imageHeadersBlockCount = (DataBlocksPosition - ImageHeaderPosition) / sizeOfBlock;
-            ulong numberOfBlocksToVerify = numberOfDataBlocksToVerify + imageHeadersBlockCount;
-
+            ulong numberOfBlocksToVerify = Image.GetImageBlockCount();
             ulong sizeOfHash = (ulong)TableOfHashes.LongLength / numberOfBlocksToVerify;
 
             for (int i = 0; i < TableOfHashes.Length; i += (int)sizeOfHash)
