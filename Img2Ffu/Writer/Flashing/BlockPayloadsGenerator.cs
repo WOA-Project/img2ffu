@@ -46,7 +46,7 @@ namespace Img2Ffu.Writer.Flashing
             }
             TimeSpan remaining = TimeSpan.FromMilliseconds(milliseconds);
 
-            Logging.Log(string.Format($"{GetDismLikeProgBar(int.Parse((CurrentProgress * 100 / TotalProgress).ToString()))} {Math.Truncate(remaining.TotalHours):00}:{remaining.Minutes:00}:{remaining.Seconds:00}.{remaining.Milliseconds:000}"), returnline: false, severity: Logging.LoggingLevel.Information);
+            Logging.Log(string.Format($"{GetDismLikeProgBar(int.Parse((CurrentProgress * 100 / TotalProgress).ToString()))} {Math.Truncate(remaining.TotalHours):00}:{remaining.Minutes:00}:{remaining.Seconds:00}.{remaining.Milliseconds:000}"), returnline: false, severity: DisplayRed ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
         }
 
         private static string GetDismLikeProgBar(int perc)
@@ -66,11 +66,11 @@ namespace Img2Ffu.Writer.Flashing
             return $"[{bases}]";
         }
 
-        private static readonly byte[] EMPTY_BLOCK_HASH = [0xFA, 0x43, 0x23, 0x9B, 0xCE, 0xE7, 0xB9, 0x7C, 0xA6, 0x2F, 0x00, 0x7C, 0xC6, 0x84, 0x87, 0x56, 0x0A, 0x39, 0xE1, 0x9F, 0x74, 0xF3, 0xDD, 0xE7, 0x48, 0x6D, 0xB3, 0xF9, 0x8D, 0xF8, 0xE4, 0x71];
-
         internal static KeyValuePair<ByteArrayKey, BlockPayload>[] GetGPTPayloads(KeyValuePair<ByteArrayKey, BlockPayload>[] blockPayloads, Stream stream, uint BlockSize, bool IsFixedDiskLength)
         {
             List<KeyValuePair<ByteArrayKey, BlockPayload>> blockPayloadsList = [.. blockPayloads];
+
+            byte[] EMPTY_BLOCK_HASH = SHA256.HashData(new byte[BlockSize]);
 
             // Erase both GPTs as per spec first
             blockPayloadsList.Insert(0, new KeyValuePair<ByteArrayKey, BlockPayload>(new ByteArrayKey(EMPTY_BLOCK_HASH), new BlockPayload(
@@ -195,6 +195,8 @@ namespace Img2Ffu.Writer.Flashing
 
             bool blankPayloadPhase = false;
             ulong blankPayloadCount = 0;
+
+            byte[] EMPTY_BLOCK_HASH = SHA256.HashData(new byte[BlockSize]);
 
             List<KeyValuePair<ByteArrayKey, BlockPayload>> blankBlocks = [];
 
