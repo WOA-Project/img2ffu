@@ -1,4 +1,4 @@
-﻿namespace Img2Ffu.Data
+﻿namespace Img2Ffu.Writer.Data
 {
     public class DiskLocation
     {

@@ -24,7 +24,7 @@ SOFTWARE.
 using System;
 using System.IO;
 
-namespace Img2Ffu.Streams
+namespace Img2Ffu.Writer.Streams
 {
     internal class PartialStream : Stream
     {

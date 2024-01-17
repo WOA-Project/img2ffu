@@ -21,17 +21,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using Img2Ffu.Data;
-using Img2Ffu.Helpers;
-using Img2Ffu.Streams;
+using Img2Ffu.Writer.Data;
+using Img2Ffu.Writer.Helpers;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 
-namespace Img2Ffu.Flashing
+namespace Img2Ffu.Writer.Flashing
 {
     internal class BlockPayloadsGenerator
     {
@@ -42,7 +40,7 @@ namespace Img2Ffu.Flashing
 
             double milliseconds = timeSoFar.TotalMilliseconds / CurrentProgress * (TotalProgress - CurrentProgress);
             double ticks = milliseconds * TimeSpan.TicksPerMillisecond;
-            if ((ticks > long.MaxValue) || (ticks < long.MinValue) || double.IsNaN(ticks))
+            if (ticks > long.MaxValue || ticks < long.MinValue || double.IsNaN(ticks))
             {
                 milliseconds = 0;
             }
@@ -226,7 +224,7 @@ namespace Img2Ffu.Flashing
                                 [
                                     new DiskLocation()
                                     {
-                                        BlockIndex = ((uint)flashPart.StartLocation / BlockSize) + blockIndex,
+                                        BlockIndex = (uint)flashPart.StartLocation / BlockSize + blockIndex,
                                         DiskAccessMethod = 0
                                     }
                                 ]
@@ -264,7 +262,7 @@ namespace Img2Ffu.Flashing
                                 [
                                     new DiskLocation()
                                     {
-                                        BlockIndex = ((uint)flashPart.StartLocation / BlockSize) + blockIndex,
+                                        BlockIndex = (uint)flashPart.StartLocation / BlockSize + blockIndex,
                                         DiskAccessMethod = 0
                                     }
                                 ]

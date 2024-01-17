@@ -24,7 +24,7 @@ SOFTWARE.
 using System.IO;
 using System.Text;
 
-namespace Img2Ffu.Data
+namespace Img2Ffu.Writer.Data
 {
     public class SecurityHeader
     {

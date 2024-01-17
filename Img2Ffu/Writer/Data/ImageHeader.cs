@@ -21,25 +21,38 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using Img2Ffu.Data;
 using System.IO;
+using System.Text;
 
-namespace Img2Ffu.Flashing
+namespace Img2Ffu.Writer.Data
 {
-    public class BlockPayload(WriteDescriptor WriteDescriptor, Stream Stream, ulong StreamLocation)
+    internal class ImageHeader
     {
-        public WriteDescriptor WriteDescriptor = WriteDescriptor;
-        public Stream Stream = Stream;
-        public ulong FlashPartStreamLocation = StreamLocation;
-
-        internal byte[] ReadBlock(ulong BlockSize)
+        public uint ManifestLength
         {
-            _ = Stream.Seek((long)FlashPartStreamLocation, SeekOrigin.Begin);
+            get; set;
+        }
 
-            byte[] BlockBuffer = new byte[BlockSize];
-            _ = Stream.Read(BlockBuffer, 0, (int)BlockSize);
+        public byte[] GetResultingBuffer(uint BlockSize, bool HasDeviceTargetInfo, uint DeviceTargetInfosCount)
+        {
+            using MemoryStream ImageHeaderStream = new();
+            using BinaryWriter binaryWriter = new(ImageHeaderStream);
 
-            return BlockBuffer;
+            binaryWriter.Write(HasDeviceTargetInfo ? 28u : 24u); // Size
+            binaryWriter.Write(Encoding.ASCII.GetBytes("ImageFlash  ")); // Signature
+            binaryWriter.Write(ManifestLength); // Manifest Length
+            binaryWriter.Write(BlockSize / 1024); // Chunk Size in KB
+
+            if (HasDeviceTargetInfo)
+            {
+                binaryWriter.Write(DeviceTargetInfosCount); // Device Target Infos Count
+            }
+
+            byte[] ImageHeaderBuffer = new byte[ImageHeaderStream.Length];
+            _ = ImageHeaderStream.Seek(0, SeekOrigin.Begin);
+            ImageHeaderStream.ReadExactly(ImageHeaderBuffer, 0, ImageHeaderBuffer.Length);
+
+            return ImageHeaderBuffer;
         }
     }
 }

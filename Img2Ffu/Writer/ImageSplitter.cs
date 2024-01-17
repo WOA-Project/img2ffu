@@ -21,15 +21,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using Img2Ffu.Helpers;
-using Img2Ffu.Streams;
+using Img2Ffu.Writer.Helpers;
+using Img2Ffu.Writer.Streams;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using static Img2Ffu.GPT;
 
-namespace Img2Ffu
+namespace Img2Ffu.Writer
 {
     internal class ImageSplitter
     {
@@ -135,7 +135,7 @@ namespace Img2Ffu
                     $"{(partition.FirstSector + "s").PadRight(maxPartitionLastSector)} - " +
                     $"{(partition.LastSector + "s").PadRight(maxPartitionLastSector)} - " +
                     $"{(partition.SizeInSectors + "s").PadRight(maxPartitionLastSector)} - " +
-                    $"{((partition.SizeInSectors / (double)sectorsInABlock) + "c").PadRight(maxPartitionLastSector)}",
+                    $"{(partition.SizeInSectors / (double)sectorsInABlock + "c").PadRight(maxPartitionLastSector)}",
                     isExcluded ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
 
                 if (isExcluded)

@@ -21,11 +21,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-namespace Img2Ffu.Manifest
+using System.IO;
+
+namespace Img2Ffu.Writer
 {
-    internal class StoreManifest
+    internal class FlashPart(Stream Stream, ulong StartLocation)
     {
-        public uint SectorSize;
-        public uint MinSectorCount;
+        public Stream Stream = Stream;
+        public ulong StartLocation = StartLocation;
     }
 }

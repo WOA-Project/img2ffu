@@ -23,7 +23,7 @@ SOFTWARE.
 */
 using System;
 
-namespace Img2Ffu.Helpers
+namespace Img2Ffu.Writer.Helpers
 {
     internal class Logging
     {

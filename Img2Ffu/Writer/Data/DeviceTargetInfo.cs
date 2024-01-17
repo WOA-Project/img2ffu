@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using System.Text;
 
-namespace Img2Ffu.Data
+namespace Img2Ffu.Writer.Data
 {
     internal class DeviceTargetInfo(string manufacturer, string family, string productName, string productVersion, string sKUNumber, string baseboardManufacturer, string baseboardProduct)
     {

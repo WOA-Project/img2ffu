@@ -22,7 +22,7 @@
 
 using System;
 
-namespace Img2Ffu.Helpers
+namespace Img2Ffu.Writer.Helpers
 {
     internal static class ByteOperations
     {
@@ -215,7 +215,7 @@ namespace Img2Ffu.Helpers
                 uint crc = (uint)((uint)0 ^ -1);
                 for (uint i = Offset; i < Offset + Length; i++)
                 {
-                    crc = (crc >> 8) ^ CRC32Table[(crc ^ Input[i]) & 0xFF];
+                    crc = crc >> 8 ^ CRC32Table[(crc ^ Input[i]) & 0xFF];
                 }
                 crc = (uint)(crc ^ -1);
 

@@ -23,7 +23,7 @@ SOFTWARE.
 */
 using System.Collections.Generic;
 
-namespace Img2Ffu.Manifest
+namespace Img2Ffu.Writer.Manifest
 {
     internal class ManifestIni
     {

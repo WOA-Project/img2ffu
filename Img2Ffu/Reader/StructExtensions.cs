@@ -2,7 +2,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace Img2Ffu
+namespace Img2Ffu.Reader
 {
     public static class StructExtensions
     {
@@ -24,7 +24,7 @@ namespace Img2Ffu
         {
             byte[] bytes = new byte[Marshal.SizeOf(typeof(T))];
             GCHandle handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
-            Marshal.StructureToPtr<T>(structure, handle.AddrOfPinnedObject(), false);
+            Marshal.StructureToPtr(structure, handle.AddrOfPinnedObject(), false);
             handle.Free();
             return bytes;
         }

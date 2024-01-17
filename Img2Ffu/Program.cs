@@ -23,10 +23,11 @@ SOFTWARE.
 */
 using CommandLine;
 using DiscUtils;
-using Img2Ffu.Data;
-using Img2Ffu.Flashing;
-using Img2Ffu.Helpers;
-using Img2Ffu.Manifest;
+using Img2Ffu.Writer;
+using Img2Ffu.Writer.Data;
+using Img2Ffu.Writer.Flashing;
+using Img2Ffu.Writer.Helpers;
+using Img2Ffu.Writer.Manifest;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

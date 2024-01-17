@@ -21,22 +21,25 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using System;
+using Img2Ffu.Writer.Data;
+using System.IO;
 
-namespace Img2Ffu.Manifest
+namespace Img2Ffu.Writer.Flashing
 {
-    internal class FullFlashManifest
+    public class BlockPayload(WriteDescriptor WriteDescriptor, Stream Stream, ulong StreamLocation)
     {
-        public string OSVersion;
-        public string AntiTheftVersion = "1.1"; // Allow flashing on all devices
-        public string Description = "Update on: " + DateTime.Now.ToString("u") + "::\r\n";
+        public WriteDescriptor WriteDescriptor = WriteDescriptor;
+        public Stream Stream = Stream;
+        public ulong FlashPartStreamLocation = StreamLocation;
 
-        public string StateSeparationLevel = "0";
-        public string UEFI = "True";
-        public string Version = "2.0";
-        public string DevicePlatformId3;
-        public string DevicePlatformId2;
-        public string DevicePlatformId1;
-        public string DevicePlatformId0;
+        internal byte[] ReadBlock(ulong BlockSize)
+        {
+            _ = Stream.Seek((long)FlashPartStreamLocation, SeekOrigin.Begin);
+
+            byte[] BlockBuffer = new byte[BlockSize];
+            _ = Stream.Read(BlockBuffer, 0, (int)BlockSize);
+
+            return BlockBuffer;
+        }
     }
 }

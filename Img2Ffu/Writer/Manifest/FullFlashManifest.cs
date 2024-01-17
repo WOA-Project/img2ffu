@@ -21,13 +21,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using System.IO;
+using System;
 
-namespace Img2Ffu
+namespace Img2Ffu.Writer.Manifest
 {
-    internal class FlashPart(Stream Stream, ulong StartLocation)
+    internal class FullFlashManifest
     {
-        public Stream Stream = Stream;
-        public ulong StartLocation = StartLocation;
+        public string OSVersion;
+        public string AntiTheftVersion = "1.1"; // Allow flashing on all devices
+        public string Description = "Update on: " + DateTime.Now.ToString("u") + "::\r\n";
+
+        public string StateSeparationLevel = "0";
+        public string UEFI = "True";
+        public string Version = "2.0";
+        public string DevicePlatformId3;
+        public string DevicePlatformId2;
+        public string DevicePlatformId1;
+        public string DevicePlatformId0;
     }
 }

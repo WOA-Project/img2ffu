@@ -23,7 +23,7 @@ SOFTWARE.
 */
 using System.Diagnostics.CodeAnalysis;
 
-namespace Img2Ffu.Flashing
+namespace Img2Ffu.Writer.Flashing
 {
     public readonly struct ByteArrayKey
     {
@@ -48,7 +48,7 @@ namespace Img2Ffu.Flashing
                 int hash = 17;
                 for (int i = 0; i < bytes.Length; i++)
                 {
-                    hash = (hash * 23) + bytes[i];
+                    hash = hash * 23 + bytes[i];
                 }
                 return hash;
             }
