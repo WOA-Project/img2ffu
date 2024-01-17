@@ -46,7 +46,10 @@ namespace Img2Ffu.Streams
         public override bool CanSeek => innerstream.CanSeek;
         public override bool CanWrite => innerstream.CanWrite;
         public override long Length => end - start;
-        public override long Position { get => innerstream.Position - start; set => innerstream.Position = value + start; }
+        public override long Position
+        {
+            get => innerstream.Position - start; set => innerstream.Position = value + start;
+        }
 
         public override void Flush()
         {

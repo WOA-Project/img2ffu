@@ -28,7 +28,10 @@ namespace Img2Ffu.Data
 {
     internal class ImageHeader
     {
-        public uint ManifestLength { get; set; }
+        public uint ManifestLength
+        {
+            get; set;
+        }
 
         public byte[] GetResultingBuffer(uint ChunkSize, bool HasDeviceTargetInfo, uint DeviceTargetInfosCount)
         {

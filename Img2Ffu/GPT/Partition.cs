@@ -34,7 +34,7 @@ namespace Img2Ffu
             public Guid PartitionTypeGuid; // 0x10
             public Guid PartitionGuid;     // 0x10
             internal ulong Attributes;      // 0x08
-            
+
             internal ulong SizeInSectors
             {
                 get
@@ -57,7 +57,7 @@ namespace Img2Ffu
                     }
                 }
             }
-            
+
             internal ulong FirstSector // 0x08
             {
                 get
@@ -73,7 +73,7 @@ namespace Img2Ffu
                     }
                 }
             }
-            
+
             internal ulong LastSector // 0x08
             {
                 get
@@ -86,7 +86,7 @@ namespace Img2Ffu
                     _SizeInSectors = 0;
                 }
             }
-            
+
             public string Volume
             {
                 get
@@ -94,7 +94,7 @@ namespace Img2Ffu
                     return @"\\?\Volume" + PartitionGuid.ToString("b") + @"\";
                 }
             }
-            
+
             public string FirstSectorAsString
             {
                 get
@@ -106,7 +106,7 @@ namespace Img2Ffu
                     FirstSector = Convert.ToUInt64(value, 16);
                 }
             }
-            
+
             public string LastSectorAsString
             {
                 get
@@ -118,7 +118,7 @@ namespace Img2Ffu
                     LastSector = Convert.ToUInt64(value, 16);
                 }
             }
-            
+
             public string AttributesAsString
             {
                 get

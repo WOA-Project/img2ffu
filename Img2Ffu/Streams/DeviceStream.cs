@@ -22,12 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using System;
-using System.Runtime.InteropServices;
-using System.IO;
 using Microsoft.Win32.SafeHandles;
+using System;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace Img2Ffu.Streams
 {
@@ -129,17 +129,26 @@ namespace Img2Ffu.Streams
 
         public override bool CanRead
         {
-            get { return _canRead; }
+            get
+            {
+                return _canRead;
+            }
         }
 
         public override bool CanSeek
         {
-            get { return true; }
+            get
+            {
+                return true;
+            }
         }
 
         public override bool CanWrite
         {
-            get { return _canWrite; }
+            get
+            {
+                return _canWrite;
+            }
         }
 
         public override void Flush()
@@ -233,7 +242,10 @@ namespace Img2Ffu.Streams
             ref BytesRead,                                           // number of bytes read
             nint.Zero
             ))
-            { Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error()); ; }
+            {
+                Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
+                ;
+            }
 
             _Position += 1;
 
@@ -251,7 +263,10 @@ namespace Img2Ffu.Streams
             ref BytesWritten,                                        // number of bytes written
             nint.Zero
             ))
-            { Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error()); ; }
+            {
+                Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
+                ;
+            }
 
             _Position += 1;
         }

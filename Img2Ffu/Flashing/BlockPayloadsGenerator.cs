@@ -21,13 +21,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
+using Img2Ffu.Data;
+using Img2Ffu.Helpers;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
-using Img2Ffu.Data;
-using Img2Ffu.Helpers;
 
 namespace Img2Ffu.Flashing
 {

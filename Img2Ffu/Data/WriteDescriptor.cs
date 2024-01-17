@@ -4,8 +4,14 @@ namespace Img2Ffu.Data
 {
     public class WriteDescriptor
     {
-        public BlockDataEntry BlockDataEntry { get; set; }
-        public DiskLocation[] DiskLocations { get; set; }
+        public BlockDataEntry BlockDataEntry
+        {
+            get; set;
+        }
+        public DiskLocation[] DiskLocations
+        {
+            get; set;
+        }
 
         public byte[] GetResultingBuffer(FlashUpdateVersion storeHeaderVersion)
         {

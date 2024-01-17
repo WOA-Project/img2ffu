@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Img2Ffu.Structures.Structs;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using Img2Ffu.Structures.Structs;
 
 namespace Img2Ffu.Structures.Data
 {

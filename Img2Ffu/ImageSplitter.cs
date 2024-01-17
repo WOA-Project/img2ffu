@@ -135,7 +135,7 @@ namespace Img2Ffu
                     $"{(partition.FirstSector + "s").PadRight(maxPartitionLastSector)} - " +
                     $"{(partition.LastSector + "s").PadRight(maxPartitionLastSector)} - " +
                     $"{(partition.SizeInSectors + "s").PadRight(maxPartitionLastSector)} - " +
-                    $"{(partition.SizeInSectors / (double)sectorsInAChunk + "c").PadRight(maxPartitionLastSector)}", 
+                    $"{(partition.SizeInSectors / (double)sectorsInAChunk + "c").PadRight(maxPartitionLastSector)}",
                     isExcluded ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
 
                 if (isExcluded)

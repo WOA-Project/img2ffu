@@ -1,10 +1,12 @@
-﻿using System;
+﻿using Img2Ffu.Structures.Structs;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using Img2Ffu.Structures.Structs;
 
 namespace Img2Ffu.Structures.Data
 {
@@ -17,15 +19,13 @@ namespace Img2Ffu.Structures.Data
         public ImageFlash Image;
 
         public readonly List<byte[]> BlockHashes = [];
+        public X509Certificate Certificate;
 
         private readonly Stream Stream;
-        private readonly long InitialStreamPosition;
-        private readonly long ImageHeaderPosition;
 
         public SignedImage(Stream stream)
         {
             Stream = stream;
-            InitialStreamPosition = stream.Position;
 
             SecurityHeader = stream.ReadStructure<SecurityHeader>();
 
@@ -41,16 +41,33 @@ namespace Img2Ffu.Structures.Data
             stream.Read(HashTable, 0, (int)SecurityHeader.DwHashTableSize);
 
             long Position = stream.Position;
-            if (Position % (SecurityHeader.DwChunkSizeInKb * 1024) > 0)
+            uint sizeOfBlock = SecurityHeader.DwChunkSizeInKb * 1024;
+            if (Position % sizeOfBlock > 0)
             {
-                long paddingSize = SecurityHeader.DwChunkSizeInKb * 1024 - Position % (SecurityHeader.DwChunkSizeInKb * 1024);
+                long paddingSize = sizeOfBlock - Position % sizeOfBlock;
                 Padding = new byte[paddingSize];
                 stream.Read(Padding, 0, (int)paddingSize);
             }
 
-            ImageHeaderPosition = stream.Position;
-            long signedAreaSize = Stream.Length - ImageHeaderPosition;
+            ParseBlockHashes();
+
+            try
+            {
+                Certificate = new X509Certificate(SignedCatalog);
+            }
+            catch { }
+
+            Image = new ImageFlash(stream);
+        }
+
+        private void ParseBlockHashes()
+        {
+            BlockHashes.Clear();
+
             uint sizeOfBlock = SecurityHeader.DwChunkSizeInKb * 1024;
+            uint ImageHeaderPosition = GetImageHeaderPosition();
+
+            long signedAreaSize = Stream.Length - ImageHeaderPosition;
             long numberOfBlocksToVerify = signedAreaSize / sizeOfBlock;
             long sizeOfHash = HashTable.LongLength / numberOfBlocksToVerify;
 
@@ -58,16 +75,27 @@ namespace Img2Ffu.Structures.Data
             {
                 BlockHashes.Add(HashTable[i..(i + (int)sizeOfHash)]);
             }
+        }
 
-            Image = new ImageFlash(stream);
+        private uint GetImageHeaderPosition()
+        {
+            uint sizeOfBlock = SecurityHeader.DwChunkSizeInKb * 1024;
+            uint ImageHeaderPosition = SecurityHeader.CbSize + SecurityHeader.DwCatalogSize + SecurityHeader.DwHashTableSize;
+            if (ImageHeaderPosition % sizeOfBlock > 0)
+            {
+                uint paddingSize = sizeOfBlock - ImageHeaderPosition % sizeOfBlock;
+                ImageHeaderPosition += paddingSize;
+            }
+            return ImageHeaderPosition;
         }
 
         public void VerifyFFU()
         {
-            long signedAreaSize = Stream.Length - ImageHeaderPosition;
             uint sizeOfBlock = SecurityHeader.DwChunkSizeInKb * 1024;
+            uint ImageHeaderPosition = GetImageHeaderPosition();
+
+            long signedAreaSize = Stream.Length - ImageHeaderPosition;
             long numberOfBlocksToVerify = signedAreaSize / sizeOfBlock;
-            long sizeOfHash = HashTable.LongLength / numberOfBlocksToVerify;
 
             long oldPosition = Stream.Position;
             Stream.Seek(ImageHeaderPosition, SeekOrigin.Begin);
@@ -79,10 +107,10 @@ namespace Img2Ffu.Structures.Data
             {
                 Console.Title = $"{i}/{numberOfBlocksToVerify}";
 
-                if (SecurityHeader.DwAlgId == 0x0000800c) // SHA256
+                if (SecurityHeader.DwAlgId == 0x0000800c) // SHA256 Algorithm ID
                 {
                     byte[] hash = SHA256.HashData(binaryReader.ReadBytes((int)sizeOfBlock));
-                    byte[] hashTableHash = hashTableBinaryReader.ReadBytes((int)sizeOfHash);
+                    byte[] hashTableHash = BlockHashes.ElementAt((int)i);
 
                     if (!StructuralComparisons.StructuralEqualityComparer.Equals(hash, hashTableHash))
                     {

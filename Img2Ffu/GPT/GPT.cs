@@ -18,10 +18,10 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+using Img2Ffu.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Img2Ffu.Helpers;
 
 namespace Img2Ffu
 {
@@ -37,7 +37,7 @@ namespace Img2Ffu
         internal ulong FirstUsableSector;
         internal ulong LastUsableSector;
         internal bool HasChanged = false;
-        
+
         public List<Partition> Partitions = [];
 
         internal static uint GetGPTSize(byte[] GPTBuffer, uint SectorSize)

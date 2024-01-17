@@ -36,11 +36,23 @@ namespace Img2Ffu.Data
         private ushort FullFlashMinorVersion = 0;
 
         // Size is 0xC0
-        public string[] PlatformIds { get; set; }
+        public string[] PlatformIds
+        {
+            get; set;
+        }
 
-        public uint BlockSize { get; set; }
-        public uint WriteDescriptorCount { get; set; }
-        public uint WriteDescriptorLength { get; set; }
+        public uint BlockSize
+        {
+            get; set;
+        }
+        public uint WriteDescriptorCount
+        {
+            get; set;
+        }
+        public uint WriteDescriptorLength
+        {
+            get; set;
+        }
         public uint ValidateDescriptorCount { get; set; } = 0;
         public uint ValidateDescriptorLength { get; set; } = 0;
         public uint InitialTableIndex { get; set; } = 0;
@@ -56,9 +68,18 @@ namespace Img2Ffu.Data
         private uint CompressionAlgorithm = 0; // 0: None, 1: GZip
 
         // V2
-        public ushort NumberOfStores { get; set; } // 0x4 (Total number of stores)
-        public ushort StoreIndex { get; set; } // 0x1 (Starts counting from 1)
-        public ulong StorePayloadSize { get; set; } // 0x420000
+        public ushort NumberOfStores
+        {
+            get; set;
+        } // 0x4 (Total number of stores)
+        public ushort StoreIndex
+        {
+            get; set;
+        } // 0x1 (Starts counting from 1)
+        public ulong StorePayloadSize
+        {
+            get; set;
+        } // 0x420000
 
         private ushort DevicePathLength; // 0x2b
         // Must be followed by the unicode string of the device path
@@ -66,7 +87,10 @@ namespace Img2Ffu.Data
 
         private byte[] DevicePathBuffer;
 
-        public string DevicePath { get; set; }
+        public string DevicePath
+        {
+            get; set;
+        }
 
         public byte[] GetResultingBuffer(FlashUpdateVersion storeHeaderVersion, FlashUpdateType storeHeaderUpdateType, CompressionAlgorithm storeHeaderCompressionAlgorithm)
         {

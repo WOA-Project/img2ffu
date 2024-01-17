@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using Img2Ffu.Structures.Structs;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using Img2Ffu.Structures.Structs;
 
 namespace Img2Ffu.Structures.Data
 {
@@ -14,12 +14,10 @@ namespace Img2Ffu.Structures.Data
         private readonly long DataBlocksPosition;
 
         private readonly Stream Stream;
-        private readonly long InitialStreamPosition;
 
         public ImageFlash(Stream stream)
         {
             Stream = stream;
-            InitialStreamPosition = stream.Position;
 
             ImageHeader = stream.ReadStructure<ImageHeader>();
 
@@ -82,6 +80,7 @@ namespace Img2Ffu.Structures.Data
             {
                 previousBlocks += GetDataBlockCountForStore(s);
             }
+            //Console.WriteLine($"storeIndex: {storeIndex} dataBlockIndex: {dataBlockIndex} previousBlocks: {previousBlocks}");
             return GetDataBlock(previousBlocks + dataBlockIndex);
         }
     }

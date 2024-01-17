@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using Img2Ffu.Structures.Structs;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using Img2Ffu.Structures.Structs;
 
 namespace Img2Ffu.Structures.Data
 {
@@ -15,14 +15,8 @@ namespace Img2Ffu.Structures.Data
         public readonly List<WriteDescriptor> WriteDescriptors = [];
         public byte[] Padding = [];
 
-        private readonly Stream Stream;
-        private readonly long InitialStreamPosition;
-
         public Store(Stream stream)
         {
-            Stream = stream;
-            InitialStreamPosition = stream.Position;
-
             StoreHeader = stream.ReadStructure<StoreHeader>();
 
             bool isFFUV2_2 = StoreHeader.MajorVersion == 2 && StoreHeader.FullFlashMajorVersion == 2;
