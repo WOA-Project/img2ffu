@@ -5,9 +5,12 @@ namespace Img2Ffu.Structures.Structs
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct BlockDataEntry
     {
-        public uint dwLocationCount;
-        public uint dwBlockCount;
+        public uint LocationCount;
+        public uint BlockCount;
 
-        public override readonly string ToString() => $"{{dwLocationCount: {dwLocationCount}, dwBlockCount: {dwBlockCount}}}";
+        public override readonly string ToString()
+        {
+            return $"{{LocationCount: {LocationCount}, BlockCount: {BlockCount}}}";
+        }
     }
 }

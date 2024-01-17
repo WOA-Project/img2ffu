@@ -13,8 +13,8 @@ namespace Img2Ffu.Structures.Data
     internal class SignedImage
     {
         public SecurityHeader SecurityHeader;
-        public byte[] SignedCatalog;
-        public byte[] HashTable;
+        public byte[] Catalog;
+        public byte[] TableOfHashes;
         public byte[] Padding = [];
         public ImageFlash Image;
 
@@ -22,6 +22,7 @@ namespace Img2Ffu.Structures.Data
         public X509Certificate Certificate;
 
         private readonly Stream Stream;
+        private readonly ulong DataBlocksPosition;
 
         public SignedImage(Stream stream)
         {
@@ -34,56 +35,60 @@ namespace Img2Ffu.Structures.Data
                 throw new InvalidDataException("Invalid Security Header Signature!");
             }
 
-            SignedCatalog = new byte[SecurityHeader.DwCatalogSize];
-            stream.Read(SignedCatalog, 0, (int)SecurityHeader.DwCatalogSize);
+            Catalog = new byte[SecurityHeader.CatalogSize];
+            _ = stream.Read(Catalog, 0, (int)SecurityHeader.CatalogSize);
 
-            HashTable = new byte[SecurityHeader.DwHashTableSize];
-            stream.Read(HashTable, 0, (int)SecurityHeader.DwHashTableSize);
+            TableOfHashes = new byte[SecurityHeader.HashTableSize];
+            _ = stream.Read(TableOfHashes, 0, (int)SecurityHeader.HashTableSize);
 
             long Position = stream.Position;
-            uint sizeOfBlock = SecurityHeader.DwChunkSizeInKb * 1024;
+            uint sizeOfBlock = SecurityHeader.ChunkSizeInKB * 1024;
             if (Position % sizeOfBlock > 0)
             {
-                long paddingSize = sizeOfBlock - Position % sizeOfBlock;
+                long paddingSize = sizeOfBlock - (Position % sizeOfBlock);
                 Padding = new byte[paddingSize];
-                stream.Read(Padding, 0, (int)paddingSize);
+                _ = stream.Read(Padding, 0, (int)paddingSize);
             }
-
-            ParseBlockHashes();
 
             try
             {
-                Certificate = new X509Certificate(SignedCatalog);
+                Certificate = new X509Certificate(Catalog);
             }
             catch { }
 
             Image = new ImageFlash(stream);
+
+            DataBlocksPosition = (ulong)stream.Position;
+
+            ParseBlockHashes();
         }
 
         private void ParseBlockHashes()
         {
             BlockHashes.Clear();
 
-            uint sizeOfBlock = SecurityHeader.DwChunkSizeInKb * 1024;
+            uint sizeOfBlock = SecurityHeader.ChunkSizeInKB * 1024;
             uint ImageHeaderPosition = GetImageHeaderPosition();
 
-            long signedAreaSize = Stream.Length - ImageHeaderPosition;
-            long numberOfBlocksToVerify = signedAreaSize / sizeOfBlock;
-            long sizeOfHash = HashTable.LongLength / numberOfBlocksToVerify;
+            ulong numberOfDataBlocksToVerify = Image.GetDataBlockCount();
+            ulong imageHeadersBlockCount = (DataBlocksPosition - ImageHeaderPosition) / sizeOfBlock;
+            ulong numberOfBlocksToVerify = numberOfDataBlocksToVerify + imageHeadersBlockCount;
 
-            for (int i = 0; i < HashTable.Length; i += (int)sizeOfHash)
+            ulong sizeOfHash = (ulong)TableOfHashes.LongLength / numberOfBlocksToVerify;
+
+            for (int i = 0; i < TableOfHashes.Length; i += (int)sizeOfHash)
             {
-                BlockHashes.Add(HashTable[i..(i + (int)sizeOfHash)]);
+                BlockHashes.Add(TableOfHashes[i..(i + (int)sizeOfHash)]);
             }
         }
 
         private uint GetImageHeaderPosition()
         {
-            uint sizeOfBlock = SecurityHeader.DwChunkSizeInKb * 1024;
-            uint ImageHeaderPosition = SecurityHeader.CbSize + SecurityHeader.DwCatalogSize + SecurityHeader.DwHashTableSize;
+            uint sizeOfBlock = SecurityHeader.ChunkSizeInKB * 1024;
+            uint ImageHeaderPosition = SecurityHeader.Size + SecurityHeader.CatalogSize + SecurityHeader.HashTableSize;
             if (ImageHeaderPosition % sizeOfBlock > 0)
             {
-                uint paddingSize = sizeOfBlock - ImageHeaderPosition % sizeOfBlock;
+                uint paddingSize = sizeOfBlock - (ImageHeaderPosition % sizeOfBlock);
                 ImageHeaderPosition += paddingSize;
             }
             return ImageHeaderPosition;
@@ -91,30 +96,33 @@ namespace Img2Ffu.Structures.Data
 
         public void VerifyFFU()
         {
-            uint sizeOfBlock = SecurityHeader.DwChunkSizeInKb * 1024;
+            uint sizeOfBlock = SecurityHeader.ChunkSizeInKB * 1024;
             uint ImageHeaderPosition = GetImageHeaderPosition();
 
-            long signedAreaSize = Stream.Length - ImageHeaderPosition;
-            long numberOfBlocksToVerify = signedAreaSize / sizeOfBlock;
+            ulong numberOfDataBlocksToVerify = Image.GetDataBlockCount();
+            ulong imageHeadersBlockCount = (DataBlocksPosition - ImageHeaderPosition) / sizeOfBlock;
+            ulong numberOfBlocksToVerify = numberOfDataBlocksToVerify + imageHeadersBlockCount;
 
             long oldPosition = Stream.Position;
-            Stream.Seek(ImageHeaderPosition, SeekOrigin.Begin);
+            _ = Stream.Seek(ImageHeaderPosition, SeekOrigin.Begin);
 
             using BinaryReader binaryReader = new(Stream, Encoding.ASCII, true);
-            using BinaryReader hashTableBinaryReader = new(new MemoryStream(HashTable));
+            using BinaryReader hashTableBinaryReader = new(new MemoryStream(TableOfHashes));
 
-            for (long i = 0; i < numberOfBlocksToVerify; i++)
+            for (ulong i = 0; i < numberOfBlocksToVerify; i++)
             {
                 Console.Title = $"{i}/{numberOfBlocksToVerify}";
 
-                if (SecurityHeader.DwAlgId == 0x0000800c) // SHA256 Algorithm ID
+                if (SecurityHeader.AlgorithmId == 0x0000800c) // SHA256 Algorithm ID
                 {
-                    byte[] hash = SHA256.HashData(binaryReader.ReadBytes((int)sizeOfBlock));
+                    byte[] block = i < imageHeadersBlockCount ? binaryReader.ReadBytes((int)sizeOfBlock) : Image.GetDataBlock(i - imageHeadersBlockCount);
+
+                    byte[] hash = SHA256.HashData(block);
                     byte[] hashTableHash = BlockHashes.ElementAt((int)i);
 
                     if (!StructuralComparisons.StructuralEqualityComparer.Equals(hash, hashTableHash))
                     {
-                        Stream.Seek(oldPosition, SeekOrigin.Begin);
+                        _ = Stream.Seek(oldPosition, SeekOrigin.Begin);
                         throw new InvalidDataException($"The FFU image contains a mismatched hash value at chunk {i}. " +
                             $"Expected: {BitConverter.ToString(hashTableHash).Replace("-", "")} " +
                             $"Computed: {BitConverter.ToString(hash).Replace("-", "")}");
@@ -122,13 +130,13 @@ namespace Img2Ffu.Structures.Data
                 }
                 else
                 {
-                    throw new InvalidDataException($"Unknown Hash algorithm id: {SecurityHeader.DwAlgId}");
+                    throw new InvalidDataException($"Unknown Hash algorithm id: {SecurityHeader.AlgorithmId}");
                 }
             }
 
             Console.Title = $"{numberOfBlocksToVerify}/{numberOfBlocksToVerify}";
 
-            Stream.Seek(oldPosition, SeekOrigin.Begin);
+            _ = Stream.Seek(oldPosition, SeekOrigin.Begin);
         }
     }
 }

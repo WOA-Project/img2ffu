@@ -104,7 +104,7 @@ namespace Img2Ffu.Helpers
             return FindPattern(SourceBuffer, System.Text.Encoding.ASCII.GetBytes(Pattern), null, null);
         }
 
-        internal static uint? FindPattern(byte[] SourceBuffer, byte[] Pattern, byte[] Mask, byte[] OutPattern)
+        internal static uint? FindPattern(byte[] SourceBuffer, byte[] Pattern, byte[]? Mask, byte[]? OutPattern)
         {
             return FindPattern(SourceBuffer, 0, null, Pattern, Mask, OutPattern);
         }
@@ -215,7 +215,7 @@ namespace Img2Ffu.Helpers
                 uint crc = (uint)((uint)0 ^ -1);
                 for (uint i = Offset; i < Offset + Length; i++)
                 {
-                    crc = crc >> 8 ^ CRC32Table[(crc ^ Input[i]) & 0xFF];
+                    crc = (crc >> 8) ^ CRC32Table[(crc ^ Input[i]) & 0xFF];
                 }
                 crc = (uint)(crc ^ -1);
 

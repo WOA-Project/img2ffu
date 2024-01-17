@@ -49,7 +49,7 @@ namespace Img2Ffu.Data
             }
 
             byte[] ImageHeaderBuffer = new byte[ImageHeaderStream.Length];
-            ImageHeaderStream.Seek(0, SeekOrigin.Begin);
+            _ = ImageHeaderStream.Seek(0, SeekOrigin.Begin);
             ImageHeaderStream.ReadExactly(ImageHeaderBuffer, 0, ImageHeaderBuffer.Length);
 
             return ImageHeaderBuffer;

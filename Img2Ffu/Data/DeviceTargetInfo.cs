@@ -63,7 +63,7 @@ namespace Img2Ffu.Data
             binaryWriter.Write(Encoding.ASCII.GetBytes(BaseboardProduct));
 
             byte[] DeviceTargetInfoBuffer = new byte[DeviceTargetInfoStream.Length];
-            DeviceTargetInfoStream.Seek(0, SeekOrigin.Begin);
+            _ = DeviceTargetInfoStream.Seek(0, SeekOrigin.Begin);
             DeviceTargetInfoStream.ReadExactly(DeviceTargetInfoBuffer, 0, DeviceTargetInfoBuffer.Length);
 
             return DeviceTargetInfoBuffer;

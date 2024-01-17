@@ -5,9 +5,12 @@ namespace Img2Ffu.Structures.Structs
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct DiskLocation
     {
-        public uint dwDiskAccessMethod;
-        public uint dwBlockIndex;
+        public uint DiskAccessMethod;
+        public uint BlockIndex;
 
-        public override readonly string ToString() => $"{{dwDiskAccessMethod: {dwDiskAccessMethod}, dwBlockIndex: {dwBlockIndex}}}";
+        public override readonly string ToString()
+        {
+            return $"{{DiskAccessMethod: {DiskAccessMethod}, BlockIndex: {BlockIndex}}}";
+        }
     }
 }

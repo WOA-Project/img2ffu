@@ -28,7 +28,7 @@ namespace Img2Ffu.Streams
 {
     internal class PartialStream : Stream
     {
-        private Stream innerstream;
+        private Stream? innerstream;
 
         private bool disposed;
         private readonly long start;
@@ -36,7 +36,7 @@ namespace Img2Ffu.Streams
 
         public PartialStream(Stream stream, long StartOffset, long EndOffset)
         {
-            stream.Seek(StartOffset, SeekOrigin.Begin);
+            _ = stream.Seek(StartOffset, SeekOrigin.Begin);
             start = StartOffset;
             end = EndOffset;
             innerstream = stream;
@@ -63,17 +63,9 @@ namespace Img2Ffu.Streams
 
         public override long Seek(long offset, SeekOrigin origin)
         {
-            if (origin == SeekOrigin.Begin)
-            {
-                return innerstream.Seek(offset + start, origin);
-            }
-
-            if (origin == SeekOrigin.End)
-            {
-                return innerstream.Seek(end + offset, origin);
-            }
-
-            return innerstream.Seek(offset, origin);
+            return origin == SeekOrigin.Begin
+                ? innerstream.Seek(offset + start, origin)
+                : origin == SeekOrigin.End ? innerstream.Seek(end + offset, origin) : innerstream.Seek(offset, origin);
         }
 
         public override void SetLength(long value)
@@ -93,14 +85,14 @@ namespace Img2Ffu.Streams
             base.Close();
         }
 
-        new void Dispose()
+        private new void Dispose()
         {
             Dispose(true);
             base.Dispose();
             GC.SuppressFinalize(this);
         }
 
-        new void Dispose(bool disposing)
+        private new void Dispose(bool disposing)
         {
             // Check to see if Dispose has already been called.
             if (!disposed)

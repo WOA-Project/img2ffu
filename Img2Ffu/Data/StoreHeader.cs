@@ -36,7 +36,7 @@ namespace Img2Ffu.Data
         private ushort FullFlashMinorVersion = 0;
 
         // Size is 0xC0
-        public string[] PlatformIds
+        public required string[] PlatformIds
         {
             get; set;
         }
@@ -85,9 +85,9 @@ namespace Img2Ffu.Data
         // Must be followed by the unicode string of the device path
         // So the total size would be doubled from DevicePathLength in bytes in the binary
 
-        private byte[] DevicePathBuffer;
+        private required byte[] DevicePathBuffer;
 
-        public string DevicePath
+        public required string DevicePath
         {
             get; set;
         }
@@ -182,7 +182,7 @@ namespace Img2Ffu.Data
             }
 
             byte[] StoreHeaderBuffer = new byte[StoreHeaderStream.Length];
-            StoreHeaderStream.Seek(0, SeekOrigin.Begin);
+            _ = StoreHeaderStream.Seek(0, SeekOrigin.Begin);
             StoreHeaderStream.ReadExactly(StoreHeaderBuffer, 0, StoreHeaderBuffer.Length);
 
             return StoreHeaderBuffer;

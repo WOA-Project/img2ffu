@@ -41,7 +41,7 @@ namespace Img2Ffu
         internal static GPT GetGPT(Stream stream, uint chunkSize, uint sectorSize)
         {
             byte[] GPTBuffer = new byte[chunkSize];
-            stream.Read(GPTBuffer, 0, (int)chunkSize);
+            _ = stream.Read(GPTBuffer, 0, (int)chunkSize);
 
             uint requiredGPTBufferSize = GetGPTSize(GPTBuffer, sectorSize);
             if (chunkSize < requiredGPTBufferSize)
@@ -98,16 +98,16 @@ namespace Img2Ffu
 
             bool previousWasExcluded = true;
 
-            FlashPart currentFlashPart = null;
+            FlashPart? currentFlashPart = null;
 
             int maxPartitionNameSize = Partitions.Select(x => x.Name.Length).Max() + 1;
             int maxPartitionLastSector = Partitions.Select(x => x.LastSector.ToString().Length).Max() + 1;
 
             Logging.Log($"{"Name".PadRight(maxPartitionNameSize)} - " +
-                $"{("First").PadRight(maxPartitionLastSector)} - " +
-                $"{("Last").PadRight(maxPartitionLastSector)} - " +
-                $"{("Sectors").PadRight(maxPartitionLastSector)} - " +
-                $"{("Chunks").PadRight(maxPartitionLastSector)}",
+                $"{"First".PadRight(maxPartitionLastSector)} - " +
+                $"{"Last".PadRight(maxPartitionLastSector)} - " +
+                $"{"Sectors".PadRight(maxPartitionLastSector)} - " +
+                $"{"Chunks".PadRight(maxPartitionLastSector)}",
                 Logging.LoggingLevel.Information);
             Logging.Log("");
 
@@ -135,7 +135,7 @@ namespace Img2Ffu
                     $"{(partition.FirstSector + "s").PadRight(maxPartitionLastSector)} - " +
                     $"{(partition.LastSector + "s").PadRight(maxPartitionLastSector)} - " +
                     $"{(partition.SizeInSectors + "s").PadRight(maxPartitionLastSector)} - " +
-                    $"{(partition.SizeInSectors / (double)sectorsInAChunk + "c").PadRight(maxPartitionLastSector)}",
+                    $"{((partition.SizeInSectors / (double)sectorsInAChunk) + "c").PadRight(maxPartitionLastSector)}",
                     isExcluded ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
 
                 if (isExcluded)

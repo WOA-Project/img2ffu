@@ -86,7 +86,7 @@ namespace Img2Ffu.Flashing
             {
                 foreach (FlashPart flashPart in flashParts)
                 {
-                    flashPart.Stream.Seek(0, SeekOrigin.Begin);
+                    _ = flashPart.Stream.Seek(0, SeekOrigin.Begin);
 
                     ulong FlashPartStartBlockIndex = flashPart.StartLocation / BlockSize;
                     ulong FlashPartBlockCount = (ulong)flashPart.Stream.Length / BlockSize;

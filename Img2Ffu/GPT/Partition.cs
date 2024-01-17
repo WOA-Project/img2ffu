@@ -30,24 +30,14 @@ namespace Img2Ffu
             private ulong _FirstSector;
             private ulong _LastSector;
 
-            public string Name;            // 0x48
+            public required string Name;            // 0x48
             public Guid PartitionTypeGuid; // 0x10
             public Guid PartitionGuid;     // 0x10
             internal ulong Attributes;      // 0x08
 
             internal ulong SizeInSectors
             {
-                get
-                {
-                    if (_SizeInSectors != 0)
-                    {
-                        return _SizeInSectors;
-                    }
-                    else
-                    {
-                        return LastSector - FirstSector + 1;
-                    }
-                }
+                get => _SizeInSectors != 0 ? _SizeInSectors : LastSector - FirstSector + 1;
                 set
                 {
                     _SizeInSectors = value;
@@ -60,10 +50,7 @@ namespace Img2Ffu
 
             internal ulong FirstSector // 0x08
             {
-                get
-                {
-                    return _FirstSector;
-                }
+                get => _FirstSector;
                 set
                 {
                     _FirstSector = value;
@@ -76,10 +63,7 @@ namespace Img2Ffu
 
             internal ulong LastSector // 0x08
             {
-                get
-                {
-                    return _LastSector;
-                }
+                get => _LastSector;
                 set
                 {
                     _LastSector = value;
@@ -87,48 +71,24 @@ namespace Img2Ffu
                 }
             }
 
-            public string Volume
-            {
-                get
-                {
-                    return @"\\?\Volume" + PartitionGuid.ToString("b") + @"\";
-                }
-            }
+            public string Volume => @"\\?\Volume" + PartitionGuid.ToString("b") + @"\";
 
             public string FirstSectorAsString
             {
-                get
-                {
-                    return "0x" + FirstSector.ToString("X16");
-                }
-                set
-                {
-                    FirstSector = Convert.ToUInt64(value, 16);
-                }
+                get => "0x" + FirstSector.ToString("X16");
+                set => FirstSector = Convert.ToUInt64(value, 16);
             }
 
             public string LastSectorAsString
             {
-                get
-                {
-                    return "0x" + LastSector.ToString("X16");
-                }
-                set
-                {
-                    LastSector = Convert.ToUInt64(value, 16);
-                }
+                get => "0x" + LastSector.ToString("X16");
+                set => LastSector = Convert.ToUInt64(value, 16);
             }
 
             public string AttributesAsString
             {
-                get
-                {
-                    return "0x" + Attributes.ToString("X16");
-                }
-                set
-                {
-                    Attributes = Convert.ToUInt64(value, 16);
-                }
+                get => "0x" + Attributes.ToString("X16");
+                set => Attributes = Convert.ToUInt64(value, 16);
             }
         }
     }

@@ -99,7 +99,7 @@ namespace Img2Ffu
 
         internal Partition GetPartition(string Name)
         {
-            return Partitions.Where(p => (string.Compare(p.Name, Name, true) == 0)).FirstOrDefault();
+            return Partitions.Where(p => string.Compare(p.Name, Name, true) == 0).FirstOrDefault();
         }
 
         internal byte[] Rebuild(uint SectorSize)

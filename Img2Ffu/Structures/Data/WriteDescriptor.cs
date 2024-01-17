@@ -9,7 +9,7 @@ namespace Img2Ffu.Structures.Data
     internal class WriteDescriptor
     {
         public BlockDataEntry BlockDataEntry;
-        public uint CompressionAlgorithm;
+        public uint DataSize;
         public readonly List<DiskLocation> DiskLocations = [];
         public bool IsFFUV1_3 = false;
 
@@ -22,22 +22,22 @@ namespace Img2Ffu.Structures.Data
             if (isFFUV1_3)
             {
                 using BinaryReader binaryReader = new(stream, Encoding.ASCII, true);
-                CompressionAlgorithm = binaryReader.ReadUInt32();
+                DataSize = binaryReader.ReadUInt32();
             }
 
-            for (uint i = 0; i < BlockDataEntry.dwLocationCount; i++)
+            for (uint i = 0; i < BlockDataEntry.LocationCount; i++)
             {
                 DiskLocations.Add(stream.ReadStructure<DiskLocation>());
             }
         }
 
-        public WriteDescriptor(BlockDataEntry blockDataEntry, List<DiskLocation> diskLocations, uint compressionAlgorithm)
+        public WriteDescriptor(BlockDataEntry blockDataEntry, List<DiskLocation> diskLocations, uint dataSize)
         {
             IsFFUV1_3 = true;
 
             BlockDataEntry = blockDataEntry;
             DiskLocations = diskLocations;
-            CompressionAlgorithm = compressionAlgorithm;
+            DataSize = dataSize;
         }
 
         public WriteDescriptor(BlockDataEntry blockDataEntry, List<DiskLocation> diskLocations)
@@ -57,13 +57,13 @@ namespace Img2Ffu.Structures.Data
         {
             List<byte> bytes = [];
 
-            BlockDataEntry.dwLocationCount = (uint)DiskLocations.Count;
+            BlockDataEntry.LocationCount = (uint)DiskLocations.Count;
 
             bytes.AddRange(BlockDataEntry.GetBytes());
 
             if (IsFFUV1_3)
             {
-                bytes.AddRange(BitConverter.GetBytes(CompressionAlgorithm));
+                bytes.AddRange(BitConverter.GetBytes(DataSize));
             }
 
             foreach (DiskLocation diskLocation in DiskLocations)

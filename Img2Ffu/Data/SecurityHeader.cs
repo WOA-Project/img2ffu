@@ -50,7 +50,7 @@ namespace Img2Ffu.Data
             binaryWriter.Write(HashTableSize);
 
             byte[] SecurityHeaderBuffer = new byte[SecurityHeaderStream.Length];
-            SecurityHeaderStream.Seek(0, SeekOrigin.Begin);
+            _ = SecurityHeaderStream.Seek(0, SeekOrigin.Begin);
             SecurityHeaderStream.ReadExactly(SecurityHeaderBuffer, 0, SecurityHeaderBuffer.Length);
 
             return SecurityHeaderBuffer;

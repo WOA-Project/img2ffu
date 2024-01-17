@@ -37,11 +37,11 @@ using System.Security.Cryptography;
 
 namespace Img2Ffu
 {
-    partial class Program
+    internal partial class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-            Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
+            _ = Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
             {
                 Logging.Log("img2ffu - Converts raw image (img) files into full flash update (FFU) files");
                 Logging.Log("Copyright (c) 2019-2024, Gustave Monce - gus33000.me - @gus33000");
@@ -118,7 +118,7 @@ namespace Img2Ffu
                 process.StartInfo.CreateNoWindow = true;
                 process.StartInfo.RedirectStandardOutput = true;
 
-                process.Start();
+                _ = process.Start();
                 process.WaitForExit();
 
                 if (process.ExitCode != 0)
@@ -148,7 +148,7 @@ namespace Img2Ffu
             }
 
             byte[] WriteDescriptorsBuffer = new byte[WriteDescriptorsStream.Length];
-            WriteDescriptorsStream.Seek(0, SeekOrigin.Begin);
+            _ = WriteDescriptorsStream.Seek(0, SeekOrigin.Begin);
             WriteDescriptorsStream.ReadExactly(WriteDescriptorsBuffer, 0, WriteDescriptorsBuffer.Length);
 
             return WriteDescriptorsBuffer;
@@ -156,7 +156,7 @@ namespace Img2Ffu
 
         private static byte[] GenerateHashTable(MemoryStream FFUMetadataHeaderTempFileStream, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, uint BlockSize)
         {
-            FFUMetadataHeaderTempFileStream.Seek(0, SeekOrigin.Begin);
+            _ = FFUMetadataHeaderTempFileStream.Seek(0, SeekOrigin.Begin);
 
             using MemoryStream HashTableStream = new();
             using BinaryWriter binaryWriter = new(HashTableStream);
@@ -164,7 +164,7 @@ namespace Img2Ffu
             for (int i = 0; i < FFUMetadataHeaderTempFileStream.Length / BlockSize; i++)
             {
                 byte[] buffer = new byte[BlockSize];
-                FFUMetadataHeaderTempFileStream.Read(buffer, 0, (int)BlockSize);
+                _ = FFUMetadataHeaderTempFileStream.Read(buffer, 0, (int)BlockSize);
                 byte[] hash = SHA256.HashData(buffer);
                 binaryWriter.Write(hash, 0, hash.Length);
             }
@@ -175,7 +175,7 @@ namespace Img2Ffu
             }
 
             byte[] HashTableBuffer = new byte[HashTableStream.Length];
-            HashTableStream.Seek(0, SeekOrigin.Begin);
+            _ = HashTableStream.Seek(0, SeekOrigin.Begin);
             HashTableStream.ReadExactly(HashTableBuffer, 0, HashTableBuffer.Length);
 
             return HashTableBuffer;
@@ -309,7 +309,7 @@ namespace Img2Ffu
             Logging.Log("Opening input file...");
 
             Stream InputStream;
-            VirtualDisk InputDisk = null;
+            VirtualDisk? InputDisk = null;
 
             if (InputFile.Contains(@"\\.\physicaldrive", StringComparison.CurrentCultureIgnoreCase))
             {
@@ -503,8 +503,8 @@ namespace Img2Ffu
             byte[] SecurityHeaderBuffer = security.GetResultingBuffer(BlockSize);
 
             byte[] FFUMetadataHeaderBuffer = new byte[FFUMetadataHeaderStream.Length];
-            FFUMetadataHeaderStream.Seek(0, SeekOrigin.Begin);
-            FFUMetadataHeaderStream.Read(FFUMetadataHeaderBuffer, 0, (int)FFUMetadataHeaderStream.Length);
+            _ = FFUMetadataHeaderStream.Seek(0, SeekOrigin.Begin);
+            _ = FFUMetadataHeaderStream.Read(FFUMetadataHeaderBuffer, 0, (int)FFUMetadataHeaderStream.Length);
 
             Logging.Log("Opening FFU file for writing...");
             WriteFFUFile(FFUFile, SecurityHeaderBuffer, CatalogBuffer, HashTable, FFUMetadataHeaderBuffer, BlockPayloads, flashParts, BlockSize);

@@ -14,7 +14,7 @@ namespace Img2Ffu.Structures.Data
             ValidationEntry = stream.ReadStructure<ValidationEntry>();
 
             ValidationBytes = new byte[ValidationEntry.dwByteCount];
-            stream.Read(ValidationBytes, 0, (int)ValidationEntry.dwByteCount);
+            _ = stream.Read(ValidationBytes, 0, (int)ValidationEntry.dwByteCount);
         }
 
         public ValidationDescriptor(ValidationEntry validationEntry, byte[] validationBytes)

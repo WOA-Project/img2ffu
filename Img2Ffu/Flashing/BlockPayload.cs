@@ -36,10 +36,10 @@ namespace Img2Ffu.Flashing
         {
             FlashPart FlashPart = flashParts[FlashPartIndex];
             Stream FlashPartStream = FlashPart.Stream;
-            FlashPartStream.Seek((long)FlashPartStreamLocation, SeekOrigin.Begin);
+            _ = FlashPartStream.Seek((long)FlashPartStreamLocation, SeekOrigin.Begin);
 
             byte[] BlockBuffer = new byte[BlockSize];
-            FlashPartStream.Read(BlockBuffer, 0, (int)BlockSize);
+            _ = FlashPartStream.Read(BlockBuffer, 0, (int)BlockSize);
 
             return BlockBuffer;
         }

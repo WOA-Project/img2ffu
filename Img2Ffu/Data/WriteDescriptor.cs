@@ -4,11 +4,11 @@ namespace Img2Ffu.Data
 {
     public class WriteDescriptor
     {
-        public BlockDataEntry BlockDataEntry
+        public required BlockDataEntry BlockDataEntry
         {
             get; set;
         }
-        public DiskLocation[] DiskLocations
+        public required DiskLocation[] DiskLocations
         {
             get; set;
         }
@@ -37,7 +37,7 @@ namespace Img2Ffu.Data
             }
 
             byte[] WriteDescriptorBuffer = new byte[WriteDescriptorStream.Length];
-            WriteDescriptorStream.Seek(0, SeekOrigin.Begin);
+            _ = WriteDescriptorStream.Seek(0, SeekOrigin.Begin);
             WriteDescriptorStream.ReadExactly(WriteDescriptorBuffer, 0, WriteDescriptorBuffer.Length);
 
             return WriteDescriptorBuffer;

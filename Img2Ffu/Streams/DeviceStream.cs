@@ -68,7 +68,7 @@ namespace Img2Ffu.Streams
         [DllImport("kernel32.dll")]
         private static extern bool SetFilePointerEx(SafeFileHandle hFile, long liDistanceToMove, out long lpNewFilePointer, uint dwMoveMethod);
 
-        private SafeFileHandle handleValue = null;
+        private SafeFileHandle? handleValue = null;
         private long _Position = 0;
         private readonly long _length = 0;
         private readonly uint _sectorsize = 0;
@@ -78,7 +78,7 @@ namespace Img2Ffu.Streams
 
         private static uint CTL_CODE(uint DeviceType, uint Function, uint Method, uint Access)
         {
-            return DeviceType << 16 | Access << 14 | Function << 2 | Method;
+            return (DeviceType << 16) | (Access << 14) | (Function << 2) | Method;
         }
 
         public DeviceStream(string device, FileAccess access)
@@ -127,53 +127,23 @@ namespace Img2Ffu.Streams
             }
         }
 
-        public override bool CanRead
-        {
-            get
-            {
-                return _canRead;
-            }
-        }
+        public override bool CanRead => _canRead;
 
-        public override bool CanSeek
-        {
-            get
-            {
-                return true;
-            }
-        }
+        public override bool CanSeek => true;
 
-        public override bool CanWrite
-        {
-            get
-            {
-                return _canWrite;
-            }
-        }
+        public override bool CanWrite => _canWrite;
 
         public override void Flush()
         {
             return;
         }
 
-        public override long Length
-        {
-            get
-            {
-                return _length;
-            }
-        }
+        public override long Length => _length;
 
         public override long Position
         {
-            get
-            {
-                return _Position;
-            }
-            set
-            {
-                Seek(value, SeekOrigin.Begin);
-            }
+            get => _Position;
+            set => Seek(value, SeekOrigin.Begin);
         }
 
         /// <summary>
@@ -216,14 +186,14 @@ namespace Img2Ffu.Streams
                 long extrastart = Position % _sectorsize;
                 if (extrastart != 0)
                 {
-                    Seek(-extrastart, SeekOrigin.Current);
+                    _ = Seek(-extrastart, SeekOrigin.Current);
                 }
 
-                long addedcount = _sectorsize - count % _sectorsize;
+                long addedcount = _sectorsize - (count % _sectorsize);
                 long ncount = count + addedcount;
                 byte[] tmpbuffer = new byte[extrastart + buffer.Length + addedcount];
                 buffer.CopyTo(tmpbuffer, extrastart);
-                InternalRead(tmpbuffer, offset + (int)extrastart, (int)ncount);
+                _ = InternalRead(tmpbuffer, offset + (int)extrastart, (int)ncount);
                 tmpbuffer.ToList().Skip((int)extrastart).Take(count + offset).ToArray().CopyTo(buffer, 0);
                 return count;
             }
@@ -333,7 +303,7 @@ namespace Img2Ffu.Streams
             base.Close();
         }
 
-        new void Dispose()
+        private new void Dispose()
         {
             Dispose(true);
             base.Dispose();
