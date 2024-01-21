@@ -193,12 +193,12 @@ namespace Img2Ffu.Writer.Flashing
             Logging.Log($"Total Block Count: {TotalBlockCount} - {TotalBlockCount * BlockSize / (1024 * 1024 * 1024)}GB");
             Logging.Log("Hashing resources...");
 
-            bool blankPayloadPhase = false;
+            /*bool blankPayloadPhase = false;
             ulong blankPayloadCount = 0;
 
             byte[] EMPTY_BLOCK_HASH = SHA256.HashData(new byte[BlockSize]);
 
-            List<KeyValuePair<ByteArrayKey, BlockPayload>> blankBlocks = [];
+            List<KeyValuePair<ByteArrayKey, BlockPayload>> blankBlocks = [];*/
 
             foreach (FlashPart flashPart in flashParts)
             {
@@ -212,7 +212,7 @@ namespace Img2Ffu.Writer.Flashing
                     flashPart.Stream.Read(blockBuffer, 0, (int)BlockSize);
                     byte[] blockHash = SHA256.HashData(blockBuffer);
 
-                    if (!StructuralComparisons.StructuralEqualityComparer.Equals(EMPTY_BLOCK_HASH, blockHash))
+                    //if (!StructuralComparisons.StructuralEqualityComparer.Equals(EMPTY_BLOCK_HASH, blockHash))
                     {
                         hashedBlocks.Add(new KeyValuePair<ByteArrayKey, BlockPayload>(new ByteArrayKey(blockHash), new BlockPayload(
                             new WriteDescriptor()
@@ -235,7 +235,7 @@ namespace Img2Ffu.Writer.Flashing
                             (ulong)streamPosition
                         )));
 
-                        if (blankPayloadPhase && blankPayloadCount < BlankSectorBufferSize)
+                        /*if (blankPayloadPhase && blankPayloadCount < BlankSectorBufferSize)
                         {
                             foreach (KeyValuePair<ByteArrayKey, BlockPayload> blankPayload in blankBlocks)
                             {
@@ -245,9 +245,9 @@ namespace Img2Ffu.Writer.Flashing
 
                         blankPayloadPhase = false;
                         blankPayloadCount = 0;
-                        blankBlocks.Clear();
+                        blankBlocks.Clear();*/
                     }
-                    else if (blankPayloadCount < BlankSectorBufferSize)
+                    /*else if (blankPayloadCount < BlankSectorBufferSize)
                     {
                         blankPayloadPhase = true;
                         blankPayloadCount++;
@@ -281,15 +281,15 @@ namespace Img2Ffu.Writer.Flashing
                         }
 
                         blankBlocks.Clear();
-                    }
+                    }*/
 
                     CurrentBlockCount++;
-                    ShowProgress(CurrentBlockCount, TotalBlockCount, startTime, blankPayloadPhase);
+                    ShowProgress(CurrentBlockCount, TotalBlockCount, startTime, false);//blankPayloadPhase);
                 }
             }
 
             Logging.Log("");
-            Logging.Log($"FFU Block Count: {hashedBlocks.Count} - {hashedBlocks.Count * BlockSize / (1024 * 1024 * 1024)}GB");
+            //Logging.Log($"FFU Block Count: {hashedBlocks.Count} - {hashedBlocks.Count * BlockSize / (1024 * 1024 * 1024)}GB");
 
             return [.. hashedBlocks];
         }

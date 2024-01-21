@@ -21,6 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
+using Img2Ffu.Writer.Flashing;
 using Img2Ffu.Writer.Helpers;
 using Img2Ffu.Writer.Streams;
 using System;
@@ -59,7 +60,7 @@ namespace Img2Ffu.Writer
             {
                 Partition conflictingPartition = GPT.Partitions.OrderBy(x => x.FirstSector).First(x => x.FirstSector < sectorsInABlock);
 
-                string errorMessage = $"The Block size is too big to contain only the GPT, the GPT is {requiredGPTBufferSize} bytes long, the Block size is {BlockSize} bytes long. The overlapping partition is {conflictingPartition.Name}";
+                string errorMessage = $"The Block size is too big to contain only the GPT, the GPT is {requiredGPTBufferSize} bytes long, the Block size is {BlockSize} bytes long. The overlapping partition is {conflictingPartition.Name} at {conflictingPartition.FirstSector * sectorSize}";
                 Logging.Log(errorMessage, Logging.LoggingLevel.Error);
                 throw new Exception(errorMessage);
             }
@@ -67,7 +68,7 @@ namespace Img2Ffu.Writer
             return GPT;
         }
 
-        internal static (FlashPart[], List<Partition> partitions) GetImageSlices(Stream stream, uint BlockSize, string[] excluded, uint sectorSize)
+        internal static (FlashPart[], List<Partition> partitions) GetImageSlices(Stream stream, uint BlockSize, string[] ExcludedPartitionNames, uint sectorSize)
         {
             GPT GPT = GetGPT(stream, BlockSize, sectorSize);
             uint sectorsInABlock = BlockSize / sectorSize;
@@ -96,10 +97,6 @@ namespace Img2Ffu.Writer
             Logging.Log("Partitions with a * appended are ignored partitions");
             Logging.Log("");
 
-            bool previousWasExcluded = true;
-
-            FlashPart? currentFlashPart = null;
-
             int maxPartitionNameSize = Partitions.Select(x => x.Name.Length).Max() + 1;
             int maxPartitionLastSector = Partitions.Select(x => x.LastSector.ToString().Length).Max() + 1;
 
@@ -111,147 +108,183 @@ namespace Img2Ffu.Writer
                 Logging.LoggingLevel.Information);
             Logging.Log("");
 
-            foreach (Partition partition in Partitions.OrderBy(x => x.FirstSector))
-            {
-                bool isExcluded = false;
+            ulong CurrentStartingOffset = 0;
+            ulong CurrentEndingOffset = 0;
+            List<(ulong StartOffset, ulong Length)> AllocatedPartitionsMap = [];
 
-                if (excluded.Any(x => x == partition.Name))
+            foreach (Partition Partition in Partitions.OrderBy(x => x.FirstSector))
+            {
+                bool IsPartitionExcluded = false;
+
+                if (ExcludedPartitionNames.Any(x => x == Partition.Name))
                 {
-                    isExcluded = true;
-                    if (isUnlocked && partition.Name == UEFI_BS_NV_PARTITION_NAME)
+                    IsPartitionExcluded = true;
+                    if (isUnlocked && Partition.Name == UEFI_BS_NV_PARTITION_NAME)
                     {
-                        isExcluded = false;
+                        IsPartitionExcluded = false;
                     }
 
-                    if (isUnlockedSpecA && partition.Name == UEFI_BS_NV_PARTITION_NAME)
+                    if (isUnlockedSpecA && Partition.Name == UEFI_BS_NV_PARTITION_NAME)
                     {
-                        isExcluded = false;
+                        IsPartitionExcluded = false;
                     }
                 }
 
-                string name = $"{(isExcluded ? "*" : "")}{partition.Name}";
+                string name = $"{(IsPartitionExcluded ? "*" : "")}{Partition.Name}";
 
                 Logging.Log($"{name.PadRight(maxPartitionNameSize)} - " +
-                    $"{(partition.FirstSector + "s").PadRight(maxPartitionLastSector)} - " +
-                    $"{(partition.LastSector + "s").PadRight(maxPartitionLastSector)} - " +
-                    $"{(partition.SizeInSectors + "s").PadRight(maxPartitionLastSector)} - " +
-                    $"{(partition.SizeInSectors / (double)sectorsInABlock + "c").PadRight(maxPartitionLastSector)}",
-                    isExcluded ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
+                    $"{(Partition.FirstSector + "s").PadRight(maxPartitionLastSector)} - " +
+                    $"{(Partition.LastSector + "s").PadRight(maxPartitionLastSector)} - " +
+                    $"{(Partition.SizeInSectors + "s").PadRight(maxPartitionLastSector)} - " +
+                    $"{(Partition.SizeInSectors / (double)sectorsInABlock + "c").PadRight(maxPartitionLastSector)}",
+                    IsPartitionExcluded ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
 
-                if (isExcluded)
+                ulong CurrentPartitionStartingOffset = Partition.FirstSector * sectorSize;
+                ulong CurrentPartitionEndingOffset = (Partition.LastSector + 1) * sectorSize;
+
+                if (IsPartitionExcluded)
                 {
-                    previousWasExcluded = true;
-
-                    if (currentFlashPart != null)
+                    if (AllocatedPartitionsMap.Count != 0)
                     {
-                        ulong totalSectors = (ulong)currentFlashPart.Stream.Length / sectorSize;
-                        ulong firstSector = currentFlashPart.StartLocation / sectorSize;
-                        ulong lastSector = firstSector + totalSectors - 1;
+                        ulong AllocationTotalSizeInBytes = CurrentEndingOffset - CurrentStartingOffset;
+                        (ulong StartOffset, ulong Length)[] AllocatedBlocks = GetBlockAlignedAllocationMap([.. AllocatedPartitionsMap], AllocationTotalSizeInBytes, BlockSize);
 
-                        if (firstSector % sectorsInABlock != 0)
+                        foreach ((ulong StartOffset, ulong Length) in AllocatedBlocks)
                         {
-                            string errorMessage = $"- The stream doesn't start on a Block boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {firstSector % sectorsInABlock}, a Block is {sectorsInABlock} sectors";
-                            Logging.Log(errorMessage, Logging.LoggingLevel.Error);
-                            throw new Exception(errorMessage);
+                            ulong blockStartOffset = CurrentStartingOffset + StartOffset;
+                            PartialStream blockStream = new(stream, (long)blockStartOffset, (long)(blockStartOffset + Length));
+                            FlashPart flashPart = new(blockStream, blockStartOffset);
+                            flashParts.Add(flashPart);
                         }
 
-                        if ((lastSector + 1) % sectorsInABlock != 0)
-                        {
-                            string errorMessage = $"- The stream doesn't end on a Block boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {(lastSector + 1) % sectorsInABlock}, a Block is {sectorsInABlock} sectors";
-                            Logging.Log(errorMessage, Logging.LoggingLevel.Error);
-                            //throw new Exception(errorMessage);
-                            // TODO: Improve here
-
-                            ulong overflowSectors = (lastSector + 1) % sectorsInABlock;
-                            ulong sectorsToAddAsPadding = sectorsInABlock - overflowSectors;
-                            ulong bytesToAddAsPadding = sectorsToAddAsPadding * sectorSize;
-
-                            ulong newEnding = currentFlashPart.StartLocation + (ulong)currentFlashPart.Stream.Length + bytesToAddAsPadding;
-                            long convertedEnding = (long)newEnding;
-
-                            currentFlashPart.Stream = new PartialStream(stream, (long)currentFlashPart.StartLocation, convertedEnding);
-
-                            totalSectors = (ulong)currentFlashPart.Stream.Length / sectorSize;
-                            firstSector = currentFlashPart.StartLocation / sectorSize;
-                            lastSector = firstSector + totalSectors - 1;
-
-                            if ((lastSector + 1) % sectorsInABlock != 0)
-                            {
-                                Logging.Log(errorMessage, Logging.LoggingLevel.Error);
-                                throw new Exception(errorMessage);
-                            }
-                        }
-
-                        flashParts.Add(currentFlashPart);
-                        currentFlashPart = null;
+                        AllocatedPartitionsMap.Clear();
+                        CurrentStartingOffset = 0;
+                        CurrentEndingOffset = 0;
+                    }
+                }
+                else
+                {
+                    // 0 would be the GPT, we can't land in this case here because we deal with partitions
+                    if (CurrentStartingOffset == 0)
+                    {
+                        CurrentStartingOffset = CurrentPartitionStartingOffset;
+                        CurrentEndingOffset = CurrentPartitionEndingOffset;
+                    }
+                    else
+                    {
+                        CurrentEndingOffset = CurrentPartitionEndingOffset;
                     }
 
-                    continue;
-                }
+                    ulong allocationOffset = CurrentPartitionStartingOffset - CurrentStartingOffset;
 
-                if (previousWasExcluded)
-                {
-                    currentFlashPart = new FlashPart(stream, partition.FirstSector * sectorSize);
-                }
+                    PartialStream partialStream = new(stream, (long)CurrentPartitionStartingOffset, (long)CurrentPartitionEndingOffset);
 
-                previousWasExcluded = false;
-                currentFlashPart.Stream = new PartialStream(stream, (long)currentFlashPart.StartLocation, (long)(partition.LastSector + 1) * sectorSize);
+                    if (FileSystemAllocationUtils.IsNTFS(partialStream))
+                    {
+                        (ulong StartOffset, ulong Length)[] AllocatedClusterMap = FileSystemAllocationUtils.GetNTFSAllocatedClustersMap(partialStream);
+                        AllocatedPartitionsMap.AddRange(AllocatedClusterMap.Select(x => (allocationOffset + x.StartOffset, x.Length)));
+                    }
+                    else
+                    {
+                        AllocatedPartitionsMap.Add((allocationOffset, Partition.SizeInSectors * sectorSize));
+                    }
+                }
             }
 
-            if (!previousWasExcluded)
+            if (AllocatedPartitionsMap.Count != 0)
             {
-                if (currentFlashPart != null)
+                (ulong StartOffset, ulong Length)[] AllocatedBlocks = GetBlockAlignedAllocationMap([.. AllocatedPartitionsMap], CurrentStartingOffset - CurrentEndingOffset, BlockSize);
+
+                foreach ((ulong StartOffset, ulong Length) in AllocatedBlocks)
                 {
-                    ulong totalSectors = (ulong)currentFlashPart.Stream.Length / sectorSize;
-                    ulong firstSector = currentFlashPart.StartLocation / sectorSize;
-                    ulong lastSector = firstSector + totalSectors - 1;
-
-                    if (firstSector % sectorsInABlock != 0)
-                    {
-                        string errorMessage = $"- The stream doesn't start on a Block boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {firstSector % sectorsInABlock}, a Block is {sectorsInABlock} sectors";
-                        Logging.Log(errorMessage, Logging.LoggingLevel.Error);
-                        throw new Exception(errorMessage);
-                    }
-
-                    if ((lastSector + 1) % sectorsInABlock != 0)
-                    {
-                        string errorMessage = $"- The stream doesn't end on a Block boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {(lastSector + 1) % sectorsInABlock}, a Block is {sectorsInABlock} sectors";
-                        Logging.Log(errorMessage, Logging.LoggingLevel.Error);
-                        //throw new Exception(errorMessage);
-                        // TODO: Improve here
-
-                        ulong overflowSectors = (lastSector + 1) % sectorsInABlock;
-                        ulong sectorsToAddAsPadding = sectorsInABlock - overflowSectors;
-                        ulong bytesToAddAsPadding = sectorsToAddAsPadding * sectorSize;
-
-                        ulong newEnding = currentFlashPart.StartLocation + (ulong)currentFlashPart.Stream.Length + bytesToAddAsPadding;
-                        long convertedEnding = (long)newEnding;
-
-                        currentFlashPart.Stream = new PartialStream(stream, (long)currentFlashPart.StartLocation, convertedEnding);
-
-                        totalSectors = (ulong)currentFlashPart.Stream.Length / sectorSize;
-                        firstSector = currentFlashPart.StartLocation / sectorSize;
-                        lastSector = firstSector + totalSectors - 1;
-
-                        if ((lastSector + 1) % sectorsInABlock != 0)
-                        {
-                            Logging.Log(errorMessage, Logging.LoggingLevel.Error);
-                            throw new Exception(errorMessage);
-                        }
-                    }
-
-                    flashParts.Add(currentFlashPart);
+                    ulong blockStartOffset = CurrentStartingOffset + StartOffset;
+                    PartialStream blockStream = new(stream, (long)blockStartOffset, (long)(blockStartOffset + Length));
+                    FlashPart flashPart = new(blockStream, blockStartOffset);
+                    flashParts.Add(flashPart);
                 }
+
+                AllocatedPartitionsMap.Clear();
+                CurrentStartingOffset = 0;
+                CurrentEndingOffset = 0;
             }
 
-            Logging.Log("");
-            Logging.Log("Final Flash Parts");
-            Logging.Log("");
             FlashPart[] finalFlashParts = [.. flashParts];
-            PrintFlashParts(finalFlashParts, sectorSize, BlockSize);
+
             Logging.Log("");
+            /*Logging.Log("Final Flash Parts");
+            Logging.Log("");
+            PrintFlashParts(finalFlashParts, sectorSize, BlockSize);
+            Logging.Log("");*/
+
+            foreach (FlashPart flashPart in finalFlashParts)
+            {
+                ulong totalSectors = (ulong)flashPart.Stream.Length / sectorSize;
+                ulong firstSector = flashPart.StartLocation / sectorSize;
+                ulong lastSector = firstSector + totalSectors - 1;
+
+                if (firstSector % sectorsInABlock != 0)
+                {
+                    string errorMessage = $"- The stream doesn't start on a Block boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {firstSector % sectorsInABlock}, a Block is {sectorsInABlock} sectors";
+                    Logging.Log(errorMessage, Logging.LoggingLevel.Error);
+                    throw new Exception(errorMessage);
+                }
+
+                if ((lastSector + 1) % sectorsInABlock != 0)
+                {
+                    string errorMessage = $"- The stream doesn't end on a Block boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {(lastSector + 1) % sectorsInABlock}, a Block is {sectorsInABlock} sectors";
+                    Logging.Log(errorMessage, Logging.LoggingLevel.Error);
+                    throw new Exception(errorMessage);
+                }
+            }
 
             return (finalFlashParts, Partitions);
+        }
+
+        internal static (ulong StartOffset, ulong Length)[] GetBlockAlignedAllocationMap((ulong StartOffset, ulong Length)[] AllocationMap, ulong TotalSizeInBytes, ulong BlockSize)
+        {
+            List<(ulong StartOffset, ulong Length)> AllocatedBlocks = [];
+
+            ulong TotalNumberOfBlocks = TotalSizeInBytes / BlockSize;
+
+            if (TotalSizeInBytes % BlockSize != 0)
+            {
+                TotalNumberOfBlocks++;
+            }
+
+            for (ulong CurrentBlockIndex = 0; CurrentBlockIndex < TotalNumberOfBlocks; CurrentBlockIndex++)
+            {
+                ulong CurrentBlockStartOffset = CurrentBlockIndex * BlockSize;
+                ulong CurrentBlockEndOffset = CurrentBlockStartOffset + BlockSize;
+
+                if (AllocationMap.Any(Allocation => (CurrentBlockEndOffset > Allocation.StartOffset) && ((Allocation.StartOffset + Allocation.Length) > CurrentBlockStartOffset)))
+                {
+                    if (AllocatedBlocks.Count == 0)
+                    {
+                        AllocatedBlocks.Add((CurrentBlockStartOffset, BlockSize));
+                    }
+                    else
+                    {
+                        (ulong LastStartOffset, ulong LastLength) = AllocatedBlocks[^1];
+                        if (LastStartOffset + LastLength == CurrentBlockStartOffset)
+                        {
+                            AllocatedBlocks[^1] = (LastStartOffset, LastLength + BlockSize);
+                        }
+                        else
+                        {
+                            AllocatedBlocks.Add((CurrentBlockStartOffset, BlockSize));
+                        }
+                    }
+                }
+            }
+
+            ulong NewAllocationTotalSizeInBytes = AllocatedBlocks[^1].StartOffset + AllocatedBlocks[^1].Length;
+
+            if (NewAllocationTotalSizeInBytes > TotalSizeInBytes)
+            {
+                AllocatedBlocks[^1] = (AllocatedBlocks[^1].StartOffset, AllocatedBlocks[^1].Length - (NewAllocationTotalSizeInBytes - TotalSizeInBytes));
+            }
+
+            return [.. AllocatedBlocks];
         }
 
         internal static void PrintFlashParts(FlashPart[] finalFlashParts, uint sectorSize, uint BlockSize)

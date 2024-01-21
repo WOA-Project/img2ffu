@@ -28,60 +28,60 @@ namespace Img2Ffu.Writer.Streams
 {
     internal class PartialStream : Stream
     {
-        private Stream? innerstream;
+        private Stream innerStream;
 
         private bool disposed;
-        private readonly long start;
-        private readonly long end;
+        private readonly long startOffset;
+        private readonly long endOffset;
 
         public PartialStream(Stream stream, long StartOffset, long EndOffset)
         {
             _ = stream.Seek(StartOffset, SeekOrigin.Begin);
-            start = StartOffset;
-            end = EndOffset;
-            innerstream = stream;
+            startOffset = StartOffset;
+            endOffset = EndOffset;
+            innerStream = stream;
         }
 
-        public override bool CanRead => innerstream.CanRead;
-        public override bool CanSeek => innerstream.CanSeek;
-        public override bool CanWrite => innerstream.CanWrite;
-        public override long Length => end - start;
+        public override bool CanRead => innerStream.CanRead;
+        public override bool CanSeek => innerStream.CanSeek;
+        public override bool CanWrite => innerStream.CanWrite;
+        public override long Length => endOffset - startOffset;
         public override long Position
         {
-            get => innerstream.Position - start; set => innerstream.Position = value + start;
+            get => innerStream.Position - startOffset; set => innerStream.Position = value + startOffset;
         }
 
         public override void Flush()
         {
-            innerstream.Flush();
+            innerStream.Flush();
         }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            return innerstream.Read(buffer, offset, count);
+            return innerStream.Read(buffer, offset, count);
         }
 
         public override long Seek(long offset, SeekOrigin origin)
         {
             return origin == SeekOrigin.Begin
-                ? innerstream.Seek(offset + start, origin)
-                : origin == SeekOrigin.End ? innerstream.Seek(end + offset, origin) : innerstream.Seek(offset, origin);
+                ? innerStream.Seek(offset + startOffset, origin)
+                : origin == SeekOrigin.End ? innerStream.Seek(endOffset + offset, origin) : innerStream.Seek(offset, origin);
         }
 
         public override void SetLength(long value)
         {
-            innerstream.SetLength(value);
+            innerStream.SetLength(value);
         }
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            innerstream.Write(buffer, offset, count);
+            innerStream.Write(buffer, offset, count);
         }
 
         public override void Close()
         {
-            innerstream.Dispose();
-            innerstream = null;
+            innerStream.Dispose();
+            innerStream = null;
             base.Close();
         }
 
@@ -99,10 +99,10 @@ namespace Img2Ffu.Writer.Streams
             {
                 if (disposing)
                 {
-                    if (innerstream != null)
+                    if (innerStream != null)
                     {
-                        innerstream.Dispose();
-                        innerstream = null;
+                        innerStream.Dispose();
+                        innerStream = null;
                     }
                 }
 
