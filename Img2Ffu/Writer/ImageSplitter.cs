@@ -179,12 +179,15 @@ namespace Img2Ffu.Writer
 
                     PartialStream partialStream = new(stream, (long)CurrentPartitionStartingOffset, (long)CurrentPartitionEndingOffset);
 
-                    if (FileSystemAllocationUtils.IsNTFS(partialStream))
+                    /*if (FileSystemAllocationUtils.IsNTFS(partialStream))
                     {
                         (ulong StartOffset, ulong Length)[] AllocatedClusterMap = FileSystemAllocationUtils.GetNTFSAllocatedClustersMap(partialStream);
-                        AllocatedPartitionsMap.AddRange(AllocatedClusterMap.Select(x => (allocationOffset + x.StartOffset, x.Length)));
+                        //AllocatedPartitionsMap.AddRange(AllocatedClusterMap.Select(x => (allocationOffset + x.StartOffset, x.Length)));
+
+                        (ulong StartOffset, ulong Length) lastElement = AllocatedClusterMap.MaxBy(x => x.StartOffset);
+                        AllocatedPartitionsMap.Add((allocationOffset, lastElement.StartOffset + lastElement.Length));
                     }
-                    else
+                    else*/
                     {
                         AllocatedPartitionsMap.Add((allocationOffset, Partition.SizeInSectors * sectorSize));
                     }
@@ -211,10 +214,10 @@ namespace Img2Ffu.Writer
             FlashPart[] finalFlashParts = [.. flashParts];
 
             Logging.Log("");
-            /*Logging.Log("Final Flash Parts");
+            Logging.Log("Final Flash Parts");
             Logging.Log("");
             PrintFlashParts(finalFlashParts, sectorSize, BlockSize);
-            Logging.Log("");*/
+            Logging.Log("");
 
             foreach (FlashPart flashPart in finalFlashParts)
             {
