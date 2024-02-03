@@ -255,7 +255,7 @@ namespace Img2Ffu.Writer.Flashing
                                 [
                                     new DiskLocation()
                                     {
-                                        BlockIndex = (uint)flashPart.StartLocation / BlockSize + blockIndex,
+                                        BlockIndex = (uint)(flashPart.StartLocation / BlockSize + blockIndex),
                                         DiskAccessMethod = 0
                                     }
                                 ]
@@ -293,7 +293,7 @@ namespace Img2Ffu.Writer.Flashing
                                 [
                                     new DiskLocation()
                                     {
-                                        BlockIndex = (uint)flashPart.StartLocation / BlockSize + blockIndex,
+                                        BlockIndex = (uint)(flashPart.StartLocation / BlockSize + blockIndex),
                                         DiskAccessMethod = 0
                                     }
                                 ]
