@@ -21,7 +21,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using Img2Ffu.Writer.Flashing;
 using Img2Ffu.Writer.Helpers;
 using Img2Ffu.Writer.Streams;
 using System;
@@ -247,14 +246,15 @@ namespace Img2Ffu.Writer
         {
             List<(ulong StartOffset, ulong Length)> AllocatedBlocks = [];
 
-            ulong TotalNumberOfBlocks = TotalSizeInBytes / BlockSize;
+            (ulong MaxStartOffset, ulong MaxLength) = AllocationMap.MaxBy(x => x.StartOffset + x.Length);
+            ulong MaxEndOffset = MaxStartOffset + MaxLength;
 
-            if (TotalSizeInBytes % BlockSize != 0)
-            {
-                TotalNumberOfBlocks++;
-            }
+            ulong MaxNumberOfBlocks = MaxEndOffset / BlockSize + 1;
 
-            for (ulong CurrentBlockIndex = 0; CurrentBlockIndex < TotalNumberOfBlocks; CurrentBlockIndex++)
+            (ulong MinStartOffset, ulong MinLength) = AllocationMap.MinBy(x => x.StartOffset);
+            ulong MinNumberOfBlocks = MinStartOffset / BlockSize;
+
+            for (ulong CurrentBlockIndex = MinNumberOfBlocks; CurrentBlockIndex < MaxNumberOfBlocks; CurrentBlockIndex++)
             {
                 ulong CurrentBlockStartOffset = CurrentBlockIndex * BlockSize;
                 ulong CurrentBlockEndOffset = CurrentBlockStartOffset + BlockSize;
