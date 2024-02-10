@@ -68,12 +68,7 @@ namespace Img2Ffu
                         return;
                     }
 
-                    GenerateFFU(o.InputFile, o.FFUFile,
-                    [
-                        "Microsoft Corporation.Surface.Surface Duo.1930",
-                        "OEMB1.*.OEMB1 Product.*",
-                        "OEMEP.*.OEMEP Product.*"
-                    ], o.SectorSize, o.BlockSize, o.AntiTheftVersion, o.OperatingSystemVersion, File.ReadAllLines(ExcludedPartitionNamesFilePath), o.MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion.V2, []);
+                    GenerateFFU(o.InputFile, o.FFUFile, o.PlatformID.Split(';'), o.SectorSize, o.BlockSize, o.AntiTheftVersion, o.OperatingSystemVersion, File.ReadAllLines(ExcludedPartitionNamesFilePath), o.MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion.V2, []);;
                 }
                 catch (Exception ex)
                 {
