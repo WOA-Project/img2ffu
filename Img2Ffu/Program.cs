@@ -26,7 +26,6 @@ using DiscUtils;
 using Img2Ffu.Writer;
 using Img2Ffu.Writer.Data;
 using Img2Ffu.Writer.Flashing;
-using Img2Ffu.Writer.Helpers;
 using Img2Ffu.Writer.Manifest;
 using System;
 using System.Collections.Generic;

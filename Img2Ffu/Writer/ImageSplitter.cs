@@ -21,7 +21,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using Img2Ffu.Writer.Helpers;
 using Img2Ffu.Writer.Streams;
 using System;
 using System.Collections.Generic;

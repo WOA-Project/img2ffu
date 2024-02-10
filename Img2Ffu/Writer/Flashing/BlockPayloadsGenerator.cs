@@ -22,7 +22,6 @@ SOFTWARE.
 
 */
 using Img2Ffu.Writer.Data;
-using Img2Ffu.Writer.Helpers;
 using System;
 using System.Collections;
 using System.Collections.Generic;
