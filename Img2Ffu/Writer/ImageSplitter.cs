@@ -21,7 +21,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-using Img2Ffu.Writer.Streams;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -32,6 +31,9 @@ namespace Img2Ffu.Writer
 {
     internal class ImageSplitter
     {
+        private const string ESP_FILE_PATH = @"C:\a\adaptationkits\CDG\Output\BS_EFIESP.img";
+        private const string WIN_FILE_PATH = @"C:\a\adaptationkits\CDG\Output\OSPool.img";
+
         internal static readonly string IS_UNLOCKED_PARTITION_NAME = "IS_UNLOCKED";
         internal static readonly string HACK_PARTITION_NAME = "HACK";
         internal static readonly string BACKUP_BS_NV_PARTITION_NAME = "BACKUP_BS_NV";
@@ -92,122 +94,14 @@ namespace Img2Ffu.Writer
 
             List<FlashPart> flashParts = [];
 
-            Logging.Log("Partitions with a * appended are ignored partitions");
-            Logging.Log("");
+            FileStream espStream = File.OpenRead(ESP_FILE_PATH);
+            FileStream winStream = File.OpenRead(WIN_FILE_PATH);
 
-            int maxPartitionNameSize = Partitions.Select(x => x.Name.Length).Max() + 1;
-            int maxPartitionLastSector = Partitions.Select(x => x.LastSector.ToString().Length).Max() + 1;
+            Partition esp = Partitions.First(x => x.Name.Equals("esp"));
+            Partition win = Partitions.First(x => x.Name.Equals("win"));
 
-            Logging.Log($"{"Name".PadRight(maxPartitionNameSize)} - " +
-                $"{"First".PadRight(maxPartitionLastSector)} - " +
-                $"{"Last".PadRight(maxPartitionLastSector)} - " +
-                $"{"Sectors".PadRight(maxPartitionLastSector)} - " +
-                $"{"Blocks".PadRight(maxPartitionLastSector)}",
-                Logging.LoggingLevel.Information);
-            Logging.Log("");
-
-            ulong CurrentStartingOffset = 0;
-            ulong CurrentEndingOffset = 0;
-            List<(ulong StartOffset, ulong Length)> AllocatedPartitionsMap = [];
-
-            foreach (Partition Partition in Partitions.OrderBy(x => x.FirstSector))
-            {
-                bool IsPartitionExcluded = false;
-
-                if (ExcludedPartitionNames.Any(x => x == Partition.Name))
-                {
-                    IsPartitionExcluded = true;
-                    if (isUnlocked && Partition.Name == UEFI_BS_NV_PARTITION_NAME)
-                    {
-                        IsPartitionExcluded = false;
-                    }
-
-                    if (isUnlockedSpecA && Partition.Name == UEFI_BS_NV_PARTITION_NAME)
-                    {
-                        IsPartitionExcluded = false;
-                    }
-                }
-
-                string name = $"{(IsPartitionExcluded ? "*" : "")}{Partition.Name}";
-
-                Logging.Log($"{name.PadRight(maxPartitionNameSize)} - " +
-                    $"{(Partition.FirstSector + "s").PadRight(maxPartitionLastSector)} - " +
-                    $"{(Partition.LastSector + "s").PadRight(maxPartitionLastSector)} - " +
-                    $"{(Partition.SizeInSectors + "s").PadRight(maxPartitionLastSector)} - " +
-                    $"{(Partition.SizeInSectors / (double)sectorsInABlock + "c").PadRight(maxPartitionLastSector)}",
-                    IsPartitionExcluded ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
-
-                ulong CurrentPartitionStartingOffset = Partition.FirstSector * sectorSize;
-                ulong CurrentPartitionEndingOffset = (Partition.LastSector + 1) * sectorSize;
-
-                if (IsPartitionExcluded)
-                {
-                    if (AllocatedPartitionsMap.Count != 0)
-                    {
-                        ulong AllocationTotalSizeInBytes = CurrentEndingOffset - CurrentStartingOffset;
-                        (ulong StartOffset, ulong Length)[] AllocatedBlocks = GetBlockAlignedAllocationMap([.. AllocatedPartitionsMap], AllocationTotalSizeInBytes, BlockSize);
-
-                        foreach ((ulong StartOffset, ulong Length) in AllocatedBlocks)
-                        {
-                            ulong blockStartOffset = CurrentStartingOffset + StartOffset;
-                            PartialStream blockStream = new(stream, (long)blockStartOffset, (long)(blockStartOffset + Length));
-                            FlashPart flashPart = new(blockStream, blockStartOffset);
-                            flashParts.Add(flashPart);
-                        }
-
-                        AllocatedPartitionsMap.Clear();
-                        CurrentStartingOffset = 0;
-                        CurrentEndingOffset = 0;
-                    }
-                }
-                else
-                {
-                    // 0 would be the GPT, we can't land in this case here because we deal with partitions
-                    if (CurrentStartingOffset == 0)
-                    {
-                        CurrentStartingOffset = CurrentPartitionStartingOffset;
-                        CurrentEndingOffset = CurrentPartitionEndingOffset;
-                    }
-                    else
-                    {
-                        CurrentEndingOffset = CurrentPartitionEndingOffset;
-                    }
-
-                    ulong allocationOffset = CurrentPartitionStartingOffset - CurrentStartingOffset;
-
-                    PartialStream partialStream = new(stream, (long)CurrentPartitionStartingOffset, (long)CurrentPartitionEndingOffset);
-
-                    /*if (FileSystemAllocationUtils.IsNTFS(partialStream))
-                    {
-                        (ulong StartOffset, ulong Length)[] AllocatedClusterMap = FileSystemAllocationUtils.GetNTFSAllocatedClustersMap(partialStream);
-                        //AllocatedPartitionsMap.AddRange(AllocatedClusterMap.Select(x => (allocationOffset + x.StartOffset, x.Length)));
-
-                        (ulong StartOffset, ulong Length) lastElement = AllocatedClusterMap.MaxBy(x => x.StartOffset);
-                        AllocatedPartitionsMap.Add((allocationOffset, lastElement.StartOffset + lastElement.Length));
-                    }
-                    else*/
-                    {
-                        AllocatedPartitionsMap.Add((allocationOffset, Partition.SizeInSectors * sectorSize));
-                    }
-                }
-            }
-
-            if (AllocatedPartitionsMap.Count != 0)
-            {
-                (ulong StartOffset, ulong Length)[] AllocatedBlocks = GetBlockAlignedAllocationMap([.. AllocatedPartitionsMap], CurrentStartingOffset - CurrentEndingOffset, BlockSize);
-
-                foreach ((ulong StartOffset, ulong Length) in AllocatedBlocks)
-                {
-                    ulong blockStartOffset = CurrentStartingOffset + StartOffset;
-                    PartialStream blockStream = new(stream, (long)blockStartOffset, (long)(blockStartOffset + Length));
-                    FlashPart flashPart = new(blockStream, blockStartOffset);
-                    flashParts.Add(flashPart);
-                }
-
-                AllocatedPartitionsMap.Clear();
-                CurrentStartingOffset = 0;
-                CurrentEndingOffset = 0;
-            }
+            flashParts.Add(new FlashPart(espStream, (ulong)esp.FirstSector * (ulong)sectorSize));
+            flashParts.Add(new FlashPart(winStream, (ulong)win.FirstSector * (ulong)sectorSize));
 
             FlashPart[] finalFlashParts = [.. flashParts];
 
