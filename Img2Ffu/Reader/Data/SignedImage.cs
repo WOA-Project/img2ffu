@@ -18,8 +18,15 @@ namespace Img2Ffu.Reader.Data
         public byte[] Padding = [];
         public ImageFlash Image;
 
+        public ulong HeaderSize
+        {
+            get;
+        }
+        public int ChunkSize => (int)(SecurityHeader.ChunkSizeInKB * 1024);
+        public ulong TotalChunkCount => Image.GetImageBlockCount();
+
         public readonly List<byte[]> BlockHashes = [];
-        public X509Certificate Certificate;
+        public X509Certificate? Certificate;
 
         private readonly Stream Stream;
 
@@ -56,6 +63,8 @@ namespace Img2Ffu.Reader.Data
             catch { }
 
             Image = new ImageFlash(stream);
+
+            HeaderSize = (ulong)stream.Position;
 
             ParseBlockHashes();
         }
