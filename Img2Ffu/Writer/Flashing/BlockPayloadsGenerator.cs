@@ -82,8 +82,8 @@ namespace Img2Ffu.Writer.Flashing
             )));
 
             byte[] PrimaryGPTBuffer = new byte[(int)BlockSize];
-            stream.Seek(0, SeekOrigin.Begin);
-            stream.Read(PrimaryGPTBuffer, 0, (int)BlockSize);
+            _ = stream.Seek(0, SeekOrigin.Begin);
+            _ = stream.Read(PrimaryGPTBuffer, 0, (int)BlockSize);
 
             MemoryStream primaryGPTStream = new(PrimaryGPTBuffer);
 
@@ -112,8 +112,8 @@ namespace Img2Ffu.Writer.Flashing
             {
                 ulong endGPTChunkStartLocation = (ulong)stream.Length - BlockSize;
                 byte[] SecondaryGPTBuffer = new byte[(int)BlockSize];
-                stream.Seek((long)endGPTChunkStartLocation, SeekOrigin.Begin);
-                stream.Read(SecondaryGPTBuffer, 0, (int)BlockSize);
+                _ = stream.Seek((long)endGPTChunkStartLocation, SeekOrigin.Begin);
+                _ = stream.Read(SecondaryGPTBuffer, 0, (int)BlockSize);
 
                 MemoryStream secondaryGPTStream = new(SecondaryGPTBuffer);
 
@@ -152,8 +152,8 @@ namespace Img2Ffu.Writer.Flashing
 
                 ulong endGPTChunkStartLocation = (ulong)stream.Length - BlockSize;
                 byte[] SecondaryGPTBuffer = new byte[(int)BlockSize];
-                stream.Seek((long)endGPTChunkStartLocation, SeekOrigin.Begin);
-                stream.Read(SecondaryGPTBuffer, 0, (int)BlockSize);
+                _ = stream.Seek((long)endGPTChunkStartLocation, SeekOrigin.Begin);
+                _ = stream.Read(SecondaryGPTBuffer, 0, (int)BlockSize);
 
                 MemoryStream secondaryGPTStream = new(SecondaryGPTBuffer);
 
@@ -213,14 +213,14 @@ namespace Img2Ffu.Writer.Flashing
 
             foreach (FlashPart flashPart in flashParts)
             {
-                flashPart.Stream.Seek(0, SeekOrigin.Begin);
+                _ = flashPart.Stream.Seek(0, SeekOrigin.Begin);
                 long totalBlockCount = flashPart.Stream.Length / BlockSize;
 
                 for (uint blockIndex = 0; blockIndex < totalBlockCount; blockIndex++)
                 {
                     byte[] blockBuffer = new byte[BlockSize];
                     long streamPosition = flashPart.Stream.Position;
-                    flashPart.Stream.Read(blockBuffer, 0, (int)BlockSize);
+                    _ = flashPart.Stream.Read(blockBuffer, 0, (int)BlockSize);
                     byte[] blockHash = SHA256.HashData(blockBuffer);
 
                     if (!StructuralComparisons.StructuralEqualityComparer.Equals(EMPTY_BLOCK_HASH, blockHash))
@@ -237,7 +237,7 @@ namespace Img2Ffu.Writer.Flashing
                                 [
                                     new DiskLocation()
                                     {
-                                        BlockIndex = (uint)(flashPart.StartLocation / BlockSize + blockIndex),
+                                        BlockIndex = (uint)((flashPart.StartLocation / BlockSize) + blockIndex),
                                         DiskAccessMethod = 0
                                     }
                                 ]
@@ -275,7 +275,7 @@ namespace Img2Ffu.Writer.Flashing
                                 [
                                     new DiskLocation()
                                     {
-                                        BlockIndex = (uint)(flashPart.StartLocation / BlockSize + blockIndex),
+                                        BlockIndex = (uint)((flashPart.StartLocation / BlockSize) + blockIndex),
                                         DiskAccessMethod = 0
                                     }
                                 ]

@@ -32,7 +32,7 @@ namespace Img2Ffu.Writer.Manifest
         public Guid? Type;
         public uint TotalSectors;
         public string Primary;
-        public string Name;
+        public required string Name;
         public string FileSystem;
         public uint? ByteAlignment;
         public uint? ClusterSize;

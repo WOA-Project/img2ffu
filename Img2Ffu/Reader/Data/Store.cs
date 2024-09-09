@@ -84,12 +84,15 @@ namespace Img2Ffu.Reader.Data
             return $"{{StoreHeader: {StoreHeader}, StoreHeaderV2: {StoreHeaderV2}, DevicePath: {DevicePath}}}";
         }
 
-        private FFUVersion GetFFUVersion() => (StoreHeader.MajorVersion, StoreHeader.FullFlashMajorVersion) switch
+        private FFUVersion GetFFUVersion()
         {
-            (1, 2) => FFUVersion.V1,
-            (1, 3) => FFUVersion.V1_COMPRESSED,
-            (2, 2) => FFUVersion.V2,
-            _ => throw new InvalidDataException($"Unsupported FFU Store Format! MajorVersion: {StoreHeader.MajorVersion} FullFlashMajorVersion: {StoreHeader.FullFlashMajorVersion}"),
-        };
+            return (StoreHeader.MajorVersion, StoreHeader.FullFlashMajorVersion) switch
+            {
+                (1, 2) => FFUVersion.V1,
+                (1, 3) => FFUVersion.V1_COMPRESSED,
+                (2, 2) => FFUVersion.V2,
+                _ => throw new InvalidDataException($"Unsupported FFU Store Format! MajorVersion: {StoreHeader.MajorVersion} FullFlashMajorVersion: {StoreHeader.FullFlashMajorVersion}"),
+            };
+        }
     }
 }

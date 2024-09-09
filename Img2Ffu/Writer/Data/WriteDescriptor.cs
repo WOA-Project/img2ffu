@@ -4,11 +4,11 @@ namespace Img2Ffu.Writer.Data
 {
     public class WriteDescriptor
     {
-        public BlockDataEntry BlockDataEntry
+        public required BlockDataEntry BlockDataEntry
         {
             get; set;
         }
-        public DiskLocation[] DiskLocations
+        public required DiskLocation[] DiskLocations
         {
             get; set;
         }

@@ -69,7 +69,7 @@ namespace Img2Ffu.Writer.Flashing
 
         public static bool IsNTFS(Stream fileSystemStream)
         {
-            fileSystemStream.Seek(0, SeekOrigin.Begin);
+            _ = fileSystemStream.Seek(0, SeekOrigin.Begin);
             return NtfsFileSystem.Detect(fileSystemStream);
         }
     }

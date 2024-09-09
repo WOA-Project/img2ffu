@@ -8,7 +8,7 @@ namespace Img2Ffu
         private readonly Dictionary<ILoggingLevel, LoggingLevel> levelTransform = new()
         {
             {
-                ILoggingLevel.Information, 
+                ILoggingLevel.Information,
                 LoggingLevel.Information
             },
             {

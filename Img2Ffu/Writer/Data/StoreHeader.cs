@@ -36,7 +36,7 @@ namespace Img2Ffu.Writer.Data
         private ushort FullFlashMinorVersion = 0;
 
         // Size is 0xC0
-        public string[] PlatformIds
+        public required string[] PlatformIds
         {
             get; set;
         }
@@ -87,7 +87,7 @@ namespace Img2Ffu.Writer.Data
 
         private byte[] DevicePathBuffer;
 
-        public string DevicePath
+        public required string DevicePath
         {
             get; set;
         }

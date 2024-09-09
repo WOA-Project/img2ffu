@@ -134,7 +134,7 @@ namespace Img2Ffu.Writer
                     $"{(Partition.FirstSector + "s").PadRight(maxPartitionLastSector)} - " +
                     $"{(Partition.LastSector + "s").PadRight(maxPartitionLastSector)} - " +
                     $"{(Partition.SizeInSectors + "s").PadRight(maxPartitionLastSector)} - " +
-                    $"{(Partition.SizeInSectors / (double)sectorsInABlock + "c").PadRight(maxPartitionLastSector)}",
+                    $"{((Partition.SizeInSectors / (double)sectorsInABlock) + "c").PadRight(maxPartitionLastSector)}",
                     IsPartitionExcluded ? ILoggingLevel.Warning : ILoggingLevel.Information);
 
                 ulong CurrentPartitionStartingOffset = Partition.FirstSector * sectorSize;
@@ -248,7 +248,7 @@ namespace Img2Ffu.Writer
             (ulong MaxStartOffset, ulong MaxLength) = AllocationMap.MaxBy(x => x.StartOffset + x.Length);
             ulong MaxEndOffset = MaxStartOffset + MaxLength;
 
-            ulong MaxNumberOfBlocks = MaxEndOffset / BlockSize + 1;
+            ulong MaxNumberOfBlocks = (MaxEndOffset / BlockSize) + 1;
 
             (ulong MinStartOffset, ulong MinLength) = AllocationMap.MinBy(x => x.StartOffset);
             ulong MinNumberOfBlocks = MinStartOffset / BlockSize;

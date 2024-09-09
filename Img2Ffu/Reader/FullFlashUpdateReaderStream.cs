@@ -7,21 +7,25 @@ namespace Img2Ffu.Reader
 {
     public class FullFlashUpdateReaderStream : Stream
     {
-        private Stream ffuFileStream;
-        private SignedImage signedImage;
-        private ImageFlash image;
-        private Store store;
-        private ulong storeIndex;
-        private long length;
-        private int sectorSize;
-        private int minSectorCount;
-        private long blockSize;
-        private Dictionary<long, int> blockTable;
+        private readonly Stream ffuFileStream;
+        private readonly SignedImage signedImage;
+        private readonly ImageFlash image;
+        private readonly Store store;
+        private readonly ulong storeIndex;
+        private readonly long length;
+        private readonly long blockSize;
+        private readonly Dictionary<long, int> blockTable;
 
         private long currentPosition = 0;
 
-        public int SectorSize => sectorSize;
-        public int MinSectorCount => minSectorCount;
+        public int SectorSize
+        {
+            get;
+        }
+        public int MinSectorCount
+        {
+            get;
+        }
 
         public string DevicePath => store.DevicePath;
 
@@ -39,14 +43,14 @@ namespace Img2Ffu.Reader
             {
                 (int minSectorCount, int sectorSize)[] manifestStoreInformation = ExtractImageManifestStoreInformation(signedImage);
 
-                (minSectorCount, sectorSize) = manifestStoreInformation[storeIndex];
+                (MinSectorCount, SectorSize) = manifestStoreInformation[storeIndex];
 
-                if (sectorSize == 0)
+                if (SectorSize == 0)
                 {
-                    sectorSize = signedImage.ChunkSize;
+                    SectorSize = signedImage.ChunkSize;
                 }
 
-                length = (long)((ulong)minSectorCount * (ulong)sectorSize);
+                length = (long)((ulong)MinSectorCount * (ulong)SectorSize);
             }
             catch { }
         }
@@ -84,26 +88,12 @@ namespace Img2Ffu.Reader
                     if (line.StartsWith("MinSectorCount", StringComparison.InvariantCultureIgnoreCase))
                     {
                         bool success = int.TryParse(line.Split("=")[1].Trim(), out int tempCurrentMinSectorCount);
-                        if (success)
-                        {
-                            currentMinSectorCount = tempCurrentMinSectorCount;
-                        }
-                        else
-                        {
-                            throw new InvalidDataException(line);
-                        }
+                        currentMinSectorCount = success ? tempCurrentMinSectorCount : throw new InvalidDataException(line);
                     }
                     else if (line.StartsWith("SectorSize", StringComparison.InvariantCultureIgnoreCase))
                     {
                         bool success = int.TryParse(line.Split("=")[1].Trim(), out int tempCurrentMinSectorSize);
-                        if (success)
-                        {
-                            currentSectorSize = tempCurrentMinSectorSize;
-                        }
-                        else
-                        {
-                            throw new InvalidDataException(line);
-                        }
+                        currentSectorSize = success ? tempCurrentMinSectorSize : throw new InvalidDataException(line);
                     }
                 }
             }
@@ -225,17 +215,17 @@ namespace Img2Ffu.Reader
             {
                 throw new ArgumentNullException("buffer");
             }
-            
+
             if (offset + count > buffer.Length)
             {
                 throw new ArgumentException("The sum of offset and count is greater than the buffer length.");
             }
-            
+
             if (offset < 0)
             {
                 throw new ArgumentOutOfRangeException("offset");
             }
-            
+
             if (count < 0)
             {
                 throw new ArgumentOutOfRangeException("count");
@@ -247,7 +237,7 @@ namespace Img2Ffu.Reader
                 return count;
             }
 
-            long readBytes = (long)count;
+            long readBytes = count;
 
             if (Position + readBytes > Length)
             {
@@ -287,7 +277,7 @@ namespace Img2Ffu.Reader
                 // Workaround for malformed MBRs
                 //return 0;
             }
-            
+
             return (int)readBytes;
         }
 

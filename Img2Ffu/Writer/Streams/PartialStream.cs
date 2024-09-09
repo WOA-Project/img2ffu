@@ -28,7 +28,7 @@ namespace Img2Ffu.Writer.Streams
 {
     internal class PartialStream : Stream
     {
-        private Stream innerStream;
+        private Stream? innerStream;
 
         private bool disposed;
         private readonly long startOffset;

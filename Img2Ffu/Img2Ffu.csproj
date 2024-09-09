@@ -13,10 +13,10 @@
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="CommandLineParser" Version="2.9.1" />
-		<PackageReference Include="LTRData.DiscUtils.Core" Version="1.0.34" />
-		<PackageReference Include="LTRData.DiscUtils.Streams" Version="1.0.34" />
-		<PackageReference Include="LTRData.DiscUtils.Vhd" Version="1.0.34" />
-		<PackageReference Include="LTRData.DiscUtils.Vhdx" Version="1.0.34" />
-		<PackageReference Include="LTRData.DiscUtils.Ntfs" Version="1.0.34" />
+		<PackageReference Include="LTRData.DiscUtils.Core" Version="1.0.46" />
+		<PackageReference Include="LTRData.DiscUtils.Streams" Version="1.0.46" />
+		<PackageReference Include="LTRData.DiscUtils.Vhd" Version="1.0.46" />
+		<PackageReference Include="LTRData.DiscUtils.Vhdx" Version="1.0.46" />
+		<PackageReference Include="LTRData.DiscUtils.Ntfs" Version="1.0.46" />
 	</ItemGroup>
 </Project>
