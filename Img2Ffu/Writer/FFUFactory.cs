@@ -281,7 +281,7 @@ namespace Img2Ffu.Writer
             Logging.Log("Generating Block Payloads...");
             KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts, BlockSize, MaximumNumberOfBlankBlocksAllowed, Logging);
 
-            bool IsFixedDiskLength = false; // POC!
+            bool IsFixedDiskLength = true;
             BlockPayloads = BlockPayloadsGenerator.GetGPTPayloads(BlockPayloads, InputStream, BlockSize, IsFixedDiskLength);
 
             Logging.Log("Generating write descriptors...");
@@ -293,14 +293,7 @@ namespace Img2Ffu.Writer
                 WriteDescriptorCount = (uint)BlockPayloads.LongLength,
                 WriteDescriptorLength = (uint)WriteDescriptorBuffer.Length,
                 PlatformIds = PlatformIDs,
-                BlockSize = BlockSize,
-
-                // POC Begins
-                NumberOfStores = 1,
-                StoreIndex = 1,
-                DevicePath = "VenHw(860845C1-BE09-4355-8BC1-30D64FF8E63A)",
-                StorePayloadSize = (ulong)BlockPayloads.LongLength * BlockSize
-                // POC Ends
+                BlockSize = BlockSize
             };
 
             byte[] StoreHeaderBuffer = store.GetResultingBuffer(FlashUpdateVersion, FlashUpdateType.Full, CompressionAlgorithm.None);
