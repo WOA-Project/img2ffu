@@ -32,7 +32,7 @@ namespace Img2Ffu.Writer.Flashing
 {
     internal class BlockPayloadsGenerator
     {
-        private static void ShowProgress(ulong CurrentProgress, ulong TotalProgress, DateTime startTime, bool DisplayRed)
+        private static void ShowProgress(ulong CurrentProgress, ulong TotalProgress, DateTime startTime, bool DisplayRed, ILogging Logging)
         {
             DateTime now = DateTime.Now;
             TimeSpan timeSoFar = now - startTime;
@@ -45,24 +45,7 @@ namespace Img2Ffu.Writer.Flashing
             }
             TimeSpan remaining = TimeSpan.FromMilliseconds(milliseconds);
 
-            Logging.Log(string.Format($"{GetDismLikeProgBar(int.Parse((CurrentProgress * 100 / TotalProgress).ToString()))} {Math.Truncate(remaining.TotalHours):00}:{remaining.Minutes:00}:{remaining.Seconds:00}.{remaining.Milliseconds:000}"), returnline: false, severity: DisplayRed ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
-        }
-
-        private static string GetDismLikeProgBar(int perc)
-        {
-            int eqsLength = (int)((double)perc / 100 * 55);
-            string bases = new string('=', eqsLength) + new string(' ', 55 - eqsLength);
-            bases = bases.Insert(28, perc + "%");
-            if (perc == 100)
-            {
-                bases = bases[1..];
-            }
-            else if (perc < 10)
-            {
-                bases = bases.Insert(28, " ");
-            }
-
-            return $"[{bases}]";
+            Logging.Log(string.Format($"{LoggingHelpers.GetDismLikeProgBar(int.Parse((CurrentProgress * 100 / TotalProgress).ToString()))} {Math.Truncate(remaining.TotalHours):00}:{remaining.Minutes:00}:{remaining.Seconds:00}.{remaining.Milliseconds:000}"), returnLine: false, severity: DisplayRed ? ILoggingLevel.Warning : ILoggingLevel.Information);
         }
 
         internal static KeyValuePair<ByteArrayKey, BlockPayload>[] GetGPTPayloads(KeyValuePair<ByteArrayKey, BlockPayload>[] blockPayloads, Stream stream, uint BlockSize, bool IsFixedDiskLength)
@@ -200,7 +183,7 @@ namespace Img2Ffu.Writer.Flashing
             return [.. blockPayloadsList];
         }
 
-        internal static KeyValuePair<ByteArrayKey, BlockPayload>[] GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, uint BlankSectorBufferSize)
+        internal static KeyValuePair<ByteArrayKey, BlockPayload>[] GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, uint BlankSectorBufferSize, ILogging Logging)
         {
             List<KeyValuePair<ByteArrayKey, BlockPayload>> hashedBlocks = [];
 
@@ -312,7 +295,7 @@ namespace Img2Ffu.Writer.Flashing
                     }
 
                     CurrentBlockCount++;
-                    ShowProgress(CurrentBlockCount, TotalBlockCount, startTime, blankPayloadPhase);
+                    ShowProgress(CurrentBlockCount, TotalBlockCount, startTime, blankPayloadPhase, Logging);
                 }
             }
 

@@ -25,63 +25,60 @@ using CommandLine;
 
 namespace Img2Ffu
 {
-    internal partial class Program
+    internal class Options
     {
-        internal class Options
+        [Option('i', "img-file", HelpText = @"A path to the img file to convert *OR* a PhysicalDisk path. i.e. \\.\PhysicalDrive1", Required = true)]
+        public string InputFile
         {
-            [Option('i', "img-file", HelpText = @"A path to the img file to convert *OR* a PhysicalDisk path. i.e. \\.\PhysicalDrive1", Required = true)]
-            public string InputFile
-            {
-                get; set;
-            }
+            get; set;
+        }
 
-            [Option('f', "ffu-file", HelpText = "A path to the FFU file to output", Required = true)]
-            public string FFUFile
-            {
-                get; set;
-            }
+        [Option('f', "ffu-file", HelpText = "A path to the FFU file to output", Required = true)]
+        public string FFUFile
+        {
+            get; set;
+        }
 
-            [Option('e', "excluded-file", HelpText = "A path to the file with all partitions to exclude", Required = false, Default = ".\\provisioning-partitions.txt")]
-            public string ExcludedPartitionNamesFilePath
-            {
-                get; set;
-            }
+        [Option('e', "excluded-file", HelpText = "A path to the file with all partitions to exclude", Required = false, Default = ".\\provisioning-partitions.txt")]
+        public string ExcludedPartitionNamesFilePath
+        {
+            get; set;
+        }
 
-            [Option('p', "plat-id", HelpText = "Platform ID to use", Required = true)]
-            public string PlatformID
-            {
-                get; set;
-            }
+        [Option('p', "plat-id", HelpText = "Platform ID to use", Required = true)]
+        public string PlatformID
+        {
+            get; set;
+        }
 
-            [Option('a', "anti-theft-version", Required = false, HelpText = "Anti theft version.", Default = "1.1")]
-            public string AntiTheftVersion
-            {
-                get; set;
-            }
+        [Option('a', "anti-theft-version", Required = false, HelpText = "Anti theft version.", Default = "1.1")]
+        public string AntiTheftVersion
+        {
+            get; set;
+        }
 
-            [Option('o', "os-version", Required = false, HelpText = "Operating system version.", Default = "10.0.11111.0")]
-            public string OperatingSystemVersion
-            {
-                get; set;
-            }
+        [Option('o', "os-version", Required = false, HelpText = "Operating system version.", Default = "10.0.11111.0")]
+        public string OperatingSystemVersion
+        {
+            get; set;
+        }
 
-            [Option('c', "block-size", Required = false, HelpText = "Block size to use for the FFU file", Default = 0x20000u)]
-            public uint BlockSize
-            {
-                get; set;
-            }
+        [Option('c', "block-size", Required = false, HelpText = "Block size to use for the FFU file", Default = 0x20000u)]
+        public uint BlockSize
+        {
+            get; set;
+        }
 
-            [Option('s', "sector-size", Required = false, HelpText = "Sector size to use for the FFU file", Default = 0x200u)]
-            public uint SectorSize
-            {
-                get; set;
-            }
+        [Option('s', "sector-size", Required = false, HelpText = "Sector size to use for the FFU file", Default = 0x200u)]
+        public uint SectorSize
+        {
+            get; set;
+        }
 
-            [Option('b', "blanksectorbuffer-size", Required = false, HelpText = "Buffer size for the upper maximum allowed limit of blank sectors", Default = 100u)]
-            public uint MaximumNumberOfBlankBlocksAllowed
-            {
-                get; set;
-            }
+        [Option('b', "blanksectorbuffer-size", Required = false, HelpText = "Buffer size for the upper maximum allowed limit of blank sectors", Default = 100u)]
+        public uint MaximumNumberOfBlankBlocksAllowed
+        {
+            get; set;
         }
     }
 }

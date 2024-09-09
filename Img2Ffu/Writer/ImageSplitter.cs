@@ -37,7 +37,7 @@ namespace Img2Ffu.Writer
         internal static readonly string BACKUP_BS_NV_PARTITION_NAME = "BACKUP_BS_NV";
         internal static readonly string UEFI_BS_NV_PARTITION_NAME = "UEFI_BS_NV";
 
-        internal static GPT GetGPT(Stream stream, uint BlockSize, uint sectorSize)
+        internal static GPT GetGPT(Stream stream, uint BlockSize, uint sectorSize, ILogging Logging)
         {
             byte[] GPTBuffer = new byte[BlockSize];
             _ = stream.Read(GPTBuffer, 0, (int)BlockSize);
@@ -46,7 +46,7 @@ namespace Img2Ffu.Writer
             if (BlockSize < requiredGPTBufferSize)
             {
                 string errorMessage = $"The Block size is too small to contain the GPT, the GPT is {requiredGPTBufferSize} bytes long, the Block size is {BlockSize} bytes long";
-                Logging.Log(errorMessage, Logging.LoggingLevel.Error);
+                Logging.Log(errorMessage, ILoggingLevel.Error);
                 throw new Exception(errorMessage);
             }
 
@@ -59,16 +59,16 @@ namespace Img2Ffu.Writer
                 Partition conflictingPartition = GPT.Partitions.OrderBy(x => x.FirstSector).First(x => x.FirstSector < sectorsInABlock);
 
                 string errorMessage = $"The Block size is too big to contain only the GPT, the GPT is {requiredGPTBufferSize} bytes long, the Block size is {BlockSize} bytes long. The overlapping partition is {conflictingPartition.Name} at {conflictingPartition.FirstSector * sectorSize}";
-                Logging.Log(errorMessage, Logging.LoggingLevel.Error);
+                Logging.Log(errorMessage, ILoggingLevel.Error);
                 throw new Exception(errorMessage);
             }
 
             return GPT;
         }
 
-        internal static (FlashPart[], List<Partition> partitions) GetImageSlices(Stream stream, uint BlockSize, string[] ExcludedPartitionNames, uint sectorSize)
+        internal static (FlashPart[], List<Partition> partitions) GetImageSlices(Stream stream, uint BlockSize, string[] ExcludedPartitionNames, uint sectorSize, ILogging Logging)
         {
-            GPT GPT = GetGPT(stream, BlockSize, sectorSize);
+            GPT GPT = GetGPT(stream, BlockSize, sectorSize, Logging);
             uint sectorsInABlock = BlockSize / sectorSize;
 
             Logging.Log($"Sector Size: {sectorSize}");
@@ -103,7 +103,7 @@ namespace Img2Ffu.Writer
                 $"{"Last".PadRight(maxPartitionLastSector)} - " +
                 $"{"Sectors".PadRight(maxPartitionLastSector)} - " +
                 $"{"Blocks".PadRight(maxPartitionLastSector)}",
-                Logging.LoggingLevel.Information);
+                ILoggingLevel.Information);
             Logging.Log("");
 
             ulong CurrentStartingOffset = 0;
@@ -135,7 +135,7 @@ namespace Img2Ffu.Writer
                     $"{(Partition.LastSector + "s").PadRight(maxPartitionLastSector)} - " +
                     $"{(Partition.SizeInSectors + "s").PadRight(maxPartitionLastSector)} - " +
                     $"{(Partition.SizeInSectors / (double)sectorsInABlock + "c").PadRight(maxPartitionLastSector)}",
-                    IsPartitionExcluded ? Logging.LoggingLevel.Warning : Logging.LoggingLevel.Information);
+                    IsPartitionExcluded ? ILoggingLevel.Warning : ILoggingLevel.Information);
 
                 ulong CurrentPartitionStartingOffset = Partition.FirstSector * sectorSize;
                 ulong CurrentPartitionEndingOffset = (Partition.LastSector + 1) * sectorSize;
@@ -214,7 +214,7 @@ namespace Img2Ffu.Writer
             Logging.Log("");
             Logging.Log("Final Flash Parts");
             Logging.Log("");
-            PrintFlashParts(finalFlashParts, sectorSize, BlockSize);
+            PrintFlashParts(finalFlashParts, sectorSize, BlockSize, Logging);
             Logging.Log("");
 
             foreach (FlashPart flashPart in finalFlashParts)
@@ -226,14 +226,14 @@ namespace Img2Ffu.Writer
                 if (firstSector % sectorsInABlock != 0)
                 {
                     string errorMessage = $"- The stream doesn't start on a Block boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {firstSector % sectorsInABlock}, a Block is {sectorsInABlock} sectors";
-                    Logging.Log(errorMessage, Logging.LoggingLevel.Error);
+                    Logging.Log(errorMessage, ILoggingLevel.Error);
                     throw new Exception(errorMessage);
                 }
 
                 if ((lastSector + 1) % sectorsInABlock != 0)
                 {
                     string errorMessage = $"- The stream doesn't end on a Block boundary (Total Sectors: {totalSectors} - First Sector: {firstSector} - Last Sector: {lastSector}) - Overflow: {(lastSector + 1) % sectorsInABlock}, a Block is {sectorsInABlock} sectors";
-                    Logging.Log(errorMessage, Logging.LoggingLevel.Error);
+                    Logging.Log(errorMessage, ILoggingLevel.Error);
                     throw new Exception(errorMessage);
                 }
             }
@@ -289,16 +289,16 @@ namespace Img2Ffu.Writer
             return [.. AllocatedBlocks];
         }
 
-        internal static void PrintFlashParts(FlashPart[] finalFlashParts, uint sectorSize, uint BlockSize)
+        internal static void PrintFlashParts(FlashPart[] finalFlashParts, uint sectorSize, uint BlockSize, ILogging Logging)
         {
             for (int i = 0; i < finalFlashParts.Length; i++)
             {
                 FlashPart flashPart = finalFlashParts[i];
-                PrintFlashPart(flashPart, sectorSize, BlockSize, $"FlashPart[{i}]");
+                PrintFlashPart(flashPart, sectorSize, BlockSize, $"FlashPart[{i}]", Logging);
             }
         }
 
-        internal static void PrintFlashPart(FlashPart flashPart, uint sectorSize, uint BlockSize, string name)
+        internal static void PrintFlashPart(FlashPart flashPart, uint sectorSize, uint BlockSize, string name, ILogging Logging)
         {
             uint sectorsInABlock = BlockSize / sectorSize;
 
@@ -306,7 +306,7 @@ namespace Img2Ffu.Writer
             ulong firstSector = flashPart.StartLocation / sectorSize;
             ulong lastSector = firstSector + totalSectors - 1;
 
-            Logging.Log($"{name} - {firstSector}s - {lastSector}s - {totalSectors}s - {totalSectors / (double)sectorsInABlock}c", Logging.LoggingLevel.Information);
+            Logging.Log($"{name} - {firstSector}s - {lastSector}s - {totalSectors}s - {totalSectors / (double)sectorsInABlock}c", ILoggingLevel.Information);
         }
     }
 }

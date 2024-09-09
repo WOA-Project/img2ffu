@@ -3,7 +3,7 @@ using System.Text;
 
 namespace Img2Ffu.Writer.Data
 {
-    internal class DeviceTargetInfo(string manufacturer, string family, string productName, string productVersion, string sKUNumber, string baseboardManufacturer, string baseboardProduct)
+    public class DeviceTargetInfo(string manufacturer, string family, string productName, string productVersion, string sKUNumber, string baseboardManufacturer, string baseboardProduct)
     {
         private uint ManufacturerLength;
 
@@ -19,21 +19,21 @@ namespace Img2Ffu.Writer.Data
 
         private uint BaseboardProductLength;
 
-        public string Manufacturer = manufacturer;
+        public string Manufacturer { get; } = manufacturer;
 
-        public string Family = family;
+        public string Family { get; } = family;
 
-        public string ProductName = productName;
+        public string ProductName { get; } = productName;
 
-        public string ProductVersion = productVersion;
+        public string ProductVersion { get; } = productVersion;
 
-        public string SKUNumber = sKUNumber;
+        public string SKUNumber { get; } = sKUNumber;
 
-        public string BaseboardManufacturer = baseboardManufacturer;
+        public string BaseboardManufacturer { get; } = baseboardManufacturer;
 
-        public string BaseboardProduct = baseboardProduct;
+        public string BaseboardProduct { get; } = baseboardProduct;
 
-        public byte[] GetResultingBuffer()
+        internal byte[] GetResultingBuffer()
         {
             using MemoryStream DeviceTargetInfoStream = new();
             using BinaryWriter binaryWriter = new(DeviceTargetInfoStream);
