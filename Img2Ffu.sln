@@ -5,6 +5,8 @@ VisualStudioVersion = 17.9.34407.89
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Img2Ffu", "Img2Ffu\Img2Ffu.csproj", "{30825144-6ED0-48DF-9584-69F63BB02018}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Img2Ffu.Library", "Img2Ffu.Library\Img2Ffu.Library.csproj", "{C13C9B10-B47C-4514-A436-81C769C60EFC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,26 @@ Global
 		{30825144-6ED0-48DF-9584-69F63BB02018}.Release|x64.Build.0 = Release|x64
 		{30825144-6ED0-48DF-9584-69F63BB02018}.Release|x86.ActiveCfg = Release|x86
 		{30825144-6ED0-48DF-9584-69F63BB02018}.Release|x86.Build.0 = Release|x86
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Debug|ARM32.ActiveCfg = Debug|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Debug|ARM32.Build.0 = Debug|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Debug|x64.Build.0 = Debug|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Debug|x86.Build.0 = Debug|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Release|ARM32.ActiveCfg = Release|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Release|ARM32.Build.0 = Release|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Release|ARM64.Build.0 = Release|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Release|x64.ActiveCfg = Release|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Release|x64.Build.0 = Release|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Release|x86.ActiveCfg = Release|Any CPU
+		{C13C9B10-B47C-4514-A436-81C769C60EFC}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

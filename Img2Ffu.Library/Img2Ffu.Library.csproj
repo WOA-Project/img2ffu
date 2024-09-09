@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	<Platforms>AnyCPU;ARM32;ARM64;x86;x64</Platforms>
+	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+  	<PackageReference Include="LTRData.DiscUtils.Core" Version="1.0.46" />
+  	<PackageReference Include="LTRData.DiscUtils.Streams" Version="1.0.46" />
+  	<PackageReference Include="LTRData.DiscUtils.Vhd" Version="1.0.46" />
+  	<PackageReference Include="LTRData.DiscUtils.Vhdx" Version="1.0.46" />
+  	<PackageReference Include="LTRData.DiscUtils.Ntfs" Version="1.0.46" />
+  </ItemGroup>
+
+</Project>
