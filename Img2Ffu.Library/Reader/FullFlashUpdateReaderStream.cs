@@ -4,7 +4,7 @@ namespace Img2Ffu.Reader
 {
     public class FullFlashUpdateReaderStream : Stream
     {
-        private readonly Stream ffuFileStream;
+        private readonly Stream Stream;
         private readonly SignedImage signedImage;
         private readonly ImageFlash image;
         private readonly Store store;
@@ -28,8 +28,8 @@ namespace Img2Ffu.Reader
 
         public FullFlashUpdateReaderStream(string FFUFilePath, ulong storeIndex)
         {
-            ffuFileStream = File.OpenRead(FFUFilePath);
-            signedImage = new SignedImage(ffuFileStream);
+            Stream = File.OpenRead(FFUFilePath);
+            signedImage = new SignedImage(Stream);
             image = signedImage.Image;
             this.storeIndex = storeIndex;
             store = image.Stores[(int)storeIndex];
@@ -188,7 +188,7 @@ namespace Img2Ffu.Reader
             {
                 if (currentPosition < 0)
                 {
-                    throw new ArgumentOutOfRangeException("value");
+                    throw new ArgumentOutOfRangeException(nameof(value));
                 }
 
                 // Workaround for malformed MBRs
@@ -210,7 +210,7 @@ namespace Img2Ffu.Reader
         {
             if (buffer == null)
             {
-                throw new ArgumentNullException("buffer");
+                throw new ArgumentNullException(nameof(buffer));
             }
 
             if (offset + count > buffer.Length)
@@ -220,12 +220,12 @@ namespace Img2Ffu.Reader
 
             if (offset < 0)
             {
-                throw new ArgumentOutOfRangeException("offset");
+                throw new ArgumentOutOfRangeException(nameof(offset));
             }
 
             if (count < 0)
             {
-                throw new ArgumentOutOfRangeException("count");
+                throw new ArgumentOutOfRangeException(nameof(count));
             }
 
             // Workaround for malformed MBRs
@@ -241,31 +241,71 @@ namespace Img2Ffu.Reader
                 readBytes = (int)(Length - Position);
             }
 
-            byte[] readBuffer = new byte[readBytes];
-            Array.Fill<byte>(readBuffer, 0);
-
-            // Read the buffer from the FFU file.
-            // First we have to figure out where do we land here.
-
+            // The number of bytes that do not line up with the size of blocks (blockSize) at the beginning
             long overflowBlockStartByteCount = Position % blockSize;
+
+            // The number of bytes that do not line up with the size of blocks (blockSize) at the end
             long overflowBlockEndByteCount = (Position + readBytes) % blockSize;
 
-            long startBlockIndex = (Position - overflowBlockStartByteCount) / blockSize;
-            long endBlockIndex = (Position + readBytes + (blockSize - overflowBlockEndByteCount)) / blockSize;
+            // The position to start reading from, aligned to the size of blocks (blockSize)
+            long noOverflowBlockStartByteCount = Position - overflowBlockStartByteCount;
 
-            byte[] allReadBlocks = new byte[(endBlockIndex - startBlockIndex + 1) * blockSize];
+            // The number of extra bytes to read at the start
+            long extraStartBytes = blockSize - overflowBlockStartByteCount;
 
+            // The number of extra bytes to read at the end
+            long extraEndBytes = blockSize - overflowBlockEndByteCount;
+
+            // The position to end reading from, aligned to the size of blocks (blockSize) (excluding)
+            long noOverflowBlockEndByteCount = Position + readBytes + extraEndBytes;
+
+            // The first block we have to read
+            long startBlockIndex = noOverflowBlockStartByteCount / blockSize;
+
+            // The last block we have to read (excluding)
+            long endBlockIndex = noOverflowBlockEndByteCount / blockSize;
+
+            // Go through every block one by one
             for (long currentBlock = startBlockIndex; currentBlock < endBlockIndex; currentBlock++)
             {
+                bool isFirstBlock = currentBlock == startBlockIndex;
+                bool isLastBlock = currentBlock == endBlockIndex - 1;
+
+                long bytesToRead = blockSize;
+                long bufferDestination = extraStartBytes + (currentBlock - startBlockIndex - 1) * blockSize;
+
+                if (isFirstBlock)
+                {
+                    bytesToRead = extraStartBytes;
+                    bufferDestination = 0;
+                }
+
+                if (isLastBlock)
+                {
+                    bytesToRead -= extraEndBytes;
+                }
+
                 long virtualBlockIndex = GetBlockDataIndex(currentBlock);
+
                 if (virtualBlockIndex != -1)
                 {
-                    byte[] block = image.GetStoreDataBlock(ffuFileStream, storeIndex, (ulong)virtualBlockIndex);
-                    Array.Copy(block, 0, allReadBlocks, (int)((currentBlock - startBlockIndex) * blockSize), blockSize);
+                    // The block exists
+                    byte[] block = image.GetStoreDataBlock(Stream, storeIndex, (ulong)virtualBlockIndex);
+                    long physicalDiskLocation = 0;
+
+                    if (isFirstBlock)
+                    {
+                        physicalDiskLocation += overflowBlockStartByteCount;
+                    }
+
+                    Array.Copy(block, physicalDiskLocation, buffer, offset + (int)bufferDestination, (int)bytesToRead);
+                }
+                else
+                {
+                    // The block does not exist in the pool, fill the area with 00s instead
+                    Array.Fill<byte>(buffer, 0, offset + (int)bufferDestination, (int)bytesToRead);
                 }
             }
-
-            Array.Copy(allReadBlocks, overflowBlockStartByteCount, buffer, offset, readBytes);
 
             Position += readBytes;
 
@@ -319,7 +359,7 @@ namespace Img2Ffu.Reader
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
-            ffuFileStream.Dispose();
+            Stream.Dispose();
         }
     }
 }
