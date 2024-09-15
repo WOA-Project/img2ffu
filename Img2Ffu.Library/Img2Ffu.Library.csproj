@@ -9,11 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-  	<PackageReference Include="LTRData.DiscUtils.Core" Version="1.0.46" />
-  	<PackageReference Include="LTRData.DiscUtils.Streams" Version="1.0.46" />
-  	<PackageReference Include="LTRData.DiscUtils.Vhd" Version="1.0.46" />
-  	<PackageReference Include="LTRData.DiscUtils.Vhdx" Version="1.0.46" />
-  	<PackageReference Include="LTRData.DiscUtils.Ntfs" Version="1.0.46" />
+  	<PackageReference Include="LTRData.DiscUtils.Core" Version="1.0.47" />
+  	<PackageReference Include="LTRData.DiscUtils.Streams" Version="1.0.47" />
+  	<PackageReference Include="LTRData.DiscUtils.Vhd" Version="1.0.47" />
+  	<PackageReference Include="LTRData.DiscUtils.Vhdx" Version="1.0.47" />
+  	<PackageReference Include="LTRData.DiscUtils.Ntfs" Version="1.0.47" />
   </ItemGroup>
 
 </Project>
