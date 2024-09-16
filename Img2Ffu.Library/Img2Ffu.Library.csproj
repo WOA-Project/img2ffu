@@ -10,10 +10,8 @@
 
   <ItemGroup>
   	<PackageReference Include="LTRData.DiscUtils.Ntfs" Version="1.0.47" />
-  </ItemGroup>
-
-  <ItemGroup Condition="$(RuntimeIdentifier.StartsWith('win'))">
-    <ProjectReference Include="..\Img2Ffu.Library.Compression.Windows\Img2Ffu.Library.Compression.Windows.csproj" />
+  	<PackageReference Include="LTRData.DiscUtils.Vhd" Version="1.0.47" />
+  	<PackageReference Include="LTRData.DiscUtils.Vhdx" Version="1.0.47" />
   </ItemGroup>
 
   <ItemGroup>
