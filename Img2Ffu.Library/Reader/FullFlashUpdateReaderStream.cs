@@ -1,4 +1,5 @@
 ﻿using Img2Ffu.Reader.Data;
+using Img2Ffu.Reader.Structs;
 
 namespace Img2Ffu.Reader
 {
@@ -122,7 +123,7 @@ namespace Img2Ffu.Reader
             for (int i = 0; i < store.WriteDescriptors.Count; i++)
             {
                 WriteDescriptor writeDescriptor = store.WriteDescriptors[i];
-                foreach (Structs.DiskLocation diskLocation in writeDescriptor.DiskLocations)
+                foreach (DiskLocation diskLocation in writeDescriptor.DiskLocations)
                 {
                     switch (diskLocation.DiskAccessMethod)
                     {
@@ -316,6 +317,61 @@ namespace Img2Ffu.Reader
             }
 
             return (int)readBytes;
+        }
+
+        public void CopyTo(Stream DestinationStream, Action<ulong, ulong> ProgressCallBack)
+        {
+            long OriginalDestinationStreamPosition = DestinationStream.Position;
+
+            ulong totalBytes = 0;
+
+            for (int i = 0; i < store.WriteDescriptors.Count; i++)
+            {
+                WriteDescriptor writeDescriptor = store.WriteDescriptors[i];
+                totalBytes += (ulong)writeDescriptor.DiskLocations.Count;
+            }
+
+            totalBytes *= (ulong)blockSize * 2u;
+
+            ProgressCallBack?.Invoke(0, totalBytes);
+
+            ulong currentWrittenBytes = 0;
+
+            for (int i = 0; i < store.WriteDescriptors.Count; i++)
+            {
+                WriteDescriptor writeDescriptor = store.WriteDescriptors[i];
+                foreach (DiskLocation slabAllocation in writeDescriptor.DiskLocations)
+                {
+                    long virtualDiskBlockNumber = long.MinValue;
+                    long physicalDiskBlockNumber = i;
+
+                    switch (slabAllocation.DiskAccessMethod)
+                    {
+                        case 0:
+                            {
+                                virtualDiskBlockNumber = slabAllocation.BlockIndex;
+                                break;
+                            }
+                        case 2:
+                            {
+                                virtualDiskBlockNumber = (Length / blockSize) - 1 - slabAllocation.BlockIndex;
+                                break;
+                            }
+                    }
+
+                    long virtualPosition = virtualDiskBlockNumber * blockSize;
+
+                    DestinationStream.Seek(OriginalDestinationStreamPosition + virtualPosition, SeekOrigin.Begin);
+
+                    byte[] buffer = image.GetStoreDataBlock(Stream, storeIndex, (ulong)physicalDiskBlockNumber);
+                    currentWrittenBytes += (ulong)blockSize;
+                    ProgressCallBack?.Invoke(currentWrittenBytes, totalBytes);
+
+                    DestinationStream.Write(buffer);
+                    currentWrittenBytes += (ulong)blockSize;
+                    ProgressCallBack?.Invoke(currentWrittenBytes, totalBytes);
+                }
+            }
         }
 
         public override long Seek(long offset, SeekOrigin origin)
