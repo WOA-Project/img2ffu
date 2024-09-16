@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -12,7 +12,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        target: [win-x86,win-x64,win-arm64]
+        target: [win-x86,win-x64,win-arm64,linux-x64,linux-arm64,osx-x64,osx-arm64]
         include:
           - target: win-x86
             platform: win
@@ -23,41 +23,55 @@ jobs:
           - target: win-arm64
             platform: win
             architecture: arm64
+          - target: linux-x64
+            platform: linux
+            architecture: x64
+          - target: linux-arm64
+            platform: linux
+            architecture: arm64
+          - target: osx-x64
+            platform: osx
+            architecture: x64
+          - target: osx-arm64
+            platform: osx
+            architecture: arm64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
 
       - name: Install .NET SDK
-        uses: actions/setup-dotnet@v4.0.0
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
 
       - name: Add MSBuild to PATH
-        uses: microsoft/setup-msbuild@v1.3.1
+        uses: microsoft/setup-msbuild@v2
 
-      - name: Build utilities
+      - name: Build Utilities
         shell: pwsh
         run: |
-          msbuild /m /t:restore,img2ffu:publish /p:Platform=${{ matrix.architecture }} /p:RuntimeIdentifier=${{ matrix.platform }}-${{ matrix.architecture }} /p:PublishDir=${{ github.workspace }}/artifacts/${{ matrix.platform }}-${{ matrix.architecture }} /p:PublishSingleFile=true /p:PublishTrimmed=false /p:Configuration=Release Img2Ffu.sln
+          msbuild /m /t:restore,img2ffu:publish /p:Platform=${{ matrix.architecture }} /p:RuntimeIdentifier=${{ matrix.platform }}-${{ matrix.architecture }} /p:PublishDir=${{ github.workspace }}/artifacts/${{ matrix.platform }}-${{ matrix.architecture }} /p:PublishSingleFile=true /p:PublishTrimmed=false /p:Configuration=Release /p:IncludeNativeLibrariesForSelfExtract=true Img2Ffu.sln
 
       - name: Create PDB Output Directory
         shell: pwsh
         run: |
-          mkdir ${{ github.workspace }}\artifacts\${{ matrix.platform }}-${{ matrix.architecture }}\PDBs
+          mkdir ${{ github.workspace }}\artifacts\${{ matrix.platform }}-${{ matrix.architecture }}-symbols
 
       - name: Move PDBs
         shell: pwsh
         run: |
-          move ${{ github.workspace }}\artifacts\${{ matrix.platform }}-${{ matrix.architecture }}\*.pdb ${{ github.workspace }}\artifacts\${{ matrix.platform }}-${{ matrix.architecture }}\PDBs\
+          move ${{ github.workspace }}\artifacts\${{ matrix.platform }}-${{ matrix.architecture }}\*.pdb ${{ github.workspace }}\artifacts\${{ matrix.platform }}-${{ matrix.architecture }}-symbols
 
       - name: Upload artifact (Binaries)
-        uses: actions/upload-artifact@v3.1.3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-${{ matrix.architecture }}-binaries
           path: ${{ github.workspace }}/artifacts/${{ matrix.platform }}-${{ matrix.architecture }}
 
       - name: Upload artifact (Symbols)
-        uses: actions/upload-artifact@v3.1.3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-${{ matrix.architecture }}-symbols
-          path: ${{ github.workspace }}/artifacts/${{ matrix.platform }}-${{ matrix.architecture }}\PDBs
+          path: ${{ github.workspace }}/artifacts/${{ matrix.platform }}-${{ matrix.architecture }}-symbols

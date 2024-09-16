@@ -2,7 +2,7 @@
 
 namespace Img2Ffu.Reader.Compression
 {
-    internal class WindowsNativeCompression
+    public class WindowsNativeCompression
     {
         [DllImport("ntdll.dll")]
         private static extern uint RtlGetCompressionWorkSpaceSize(ushort CompressionFormatAndEngine, out uint CompressBufferWorkSpaceSize, out uint CompressFragmentWorkSpaceSize);
