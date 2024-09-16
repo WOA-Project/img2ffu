@@ -4,16 +4,18 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<Platforms>AnyCPU;ARM32;ARM64;x86;x64</Platforms>
 		<Nullable>enable</Nullable>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
+	
 	<ItemGroup>
 		<Content Include="provisioning-partitions.txt">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
+	
 	<ItemGroup>
 		<PackageReference Include="CommandLineParser" Version="2.9.1" />
 	</ItemGroup>
+	
 	<ItemGroup>
 	  <ProjectReference Include="..\Img2Ffu.Library\Img2Ffu.Library.csproj" />
 	</ItemGroup>
