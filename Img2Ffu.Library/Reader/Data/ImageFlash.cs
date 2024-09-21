@@ -12,6 +12,7 @@ namespace Img2Ffu.Reader.Data
         public string ManifestData = "";
         public byte[] Padding = [];
         public readonly List<Store> Stores = [];
+        public readonly List<DeviceTargetInfo> DeviceTargetInfos = [];
 
         private readonly long DataBlocksPosition;
         private readonly long InitialStreamPosition;
@@ -27,10 +28,28 @@ namespace Img2Ffu.Reader.Data
                 throw new InvalidDataException("Invalid Image Header Signature!");
             }
 
+            uint DeviceTargetingInfoCount = 0;
+
+            if (ImageHeader.Size == 28u)
+            {
+                byte[] DeviceTargetingInfoCountBuffer = new byte[4];
+                stream.Read(DeviceTargetingInfoCountBuffer, 0, 4);
+
+                DeviceTargetingInfoCount = BitConverter.ToUInt32(DeviceTargetingInfoCountBuffer);
+            }
+
+            // Account for FFUs with Device Target Info Count and Device Target Infos and potentially other things...
+            stream.Seek(InitialStreamPosition + ImageHeader.Size, SeekOrigin.Begin);
+
             byte[] manifestDataBuffer = new byte[ImageHeader.ManifestLength];
             _ = stream.Read(manifestDataBuffer, 0, (int)ImageHeader.ManifestLength);
             ASCIIEncoding asciiEncoding = new();
             ManifestData = asciiEncoding.GetString(manifestDataBuffer);
+
+            if (DeviceTargetingInfoCount > 0)
+            {
+                DeviceTargetInfos.Add(new(stream));
+            }
 
             long Position = stream.Position;
             if (Position % (ImageHeader.ChunkSize * 1024) > 0)

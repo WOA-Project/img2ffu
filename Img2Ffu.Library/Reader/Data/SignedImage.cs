@@ -78,18 +78,6 @@ namespace Img2Ffu.Reader.Data
             }
         }
 
-        private uint GetImageHeaderPosition()
-        {
-            uint sizeOfBlock = SecurityHeader.ChunkSizeInKB * 1024;
-            uint ImageHeaderPosition = SecurityHeader.Size + SecurityHeader.CatalogSize + SecurityHeader.HashTableSize;
-            if (ImageHeaderPosition % sizeOfBlock > 0)
-            {
-                uint paddingSize = sizeOfBlock - (ImageHeaderPosition % sizeOfBlock);
-                ImageHeaderPosition += paddingSize;
-            }
-            return ImageHeaderPosition;
-        }
-
         public void VerifyFFU()
         {
             ulong numberOfBlocksToVerify = Image.GetImageBlockCount();
