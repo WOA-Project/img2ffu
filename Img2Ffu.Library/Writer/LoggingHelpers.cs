@@ -2,16 +2,24 @@
 {
     internal static class LoggingHelpers
     {
-        private static string GetDismLikeProgBar(int perc)
+        private static string GetDISMLikeProgressBar(uint percentage)
         {
-            int eqsLength = (int)((double)perc / 100 * 55);
-            string bases = new string('=', eqsLength) + new string(' ', 55 - eqsLength);
-            bases = bases.Insert(28, perc + "%");
-            if (perc == 100)
+            if (percentage > 100)
+            {
+                percentage = 100;
+            }
+
+            int eqsLength = (int)Math.Floor((double)percentage * 55u / 100u);
+
+            string bases = $"{new string('=', eqsLength)}{new string(' ', 55 - eqsLength)}";
+
+            bases = bases.Insert(28, percentage + "%");
+
+            if (percentage == 100)
             {
                 bases = bases[1..];
             }
-            else if (perc < 10)
+            else if (percentage < 10)
             {
                 bases = bases.Insert(28, " ");
             }
@@ -19,38 +27,83 @@
             return $"[{bases}]";
         }
 
-        internal static void ShowProgress(ulong CurrentProgress, ulong TotalProgress, DateTime startTime, bool DisplayRed, ILogging Logging)
+
+        internal static void ShowProgress(ulong CurrentProgress,
+                                        ulong TotalProgress,
+                                        DateTime startTime,
+                                        bool DisplayRed,
+                                        ILogging Logging)
         {
+            uint ProgressPercentage = TotalProgress == 0 ? 100 : (uint)(CurrentProgress * 100 / TotalProgress);
+
             DateTime now = DateTime.Now;
             TimeSpan timeSoFar = now - startTime;
 
-            double milliseconds = timeSoFar.TotalMilliseconds / CurrentProgress * (TotalProgress - CurrentProgress);
-            double ticks = milliseconds * TimeSpan.TicksPerMillisecond;
-            if (ticks > long.MaxValue || ticks < long.MinValue || double.IsNaN(ticks))
-            {
-                milliseconds = 0;
-            }
-            TimeSpan remaining = TimeSpan.FromMilliseconds(milliseconds);
+            TimeSpan remaining = new(0);
 
-            Logging.Log(string.Format($"{GetDismLikeProgBar(int.Parse((CurrentProgress * 100 / TotalProgress).ToString()))} {Math.Truncate(remaining.TotalHours):00}:{remaining.Minutes:00}:{remaining.Seconds:00}.{remaining.Milliseconds:000}"), returnLine: false, severity: DisplayRed ? ILoggingLevel.Warning : ILoggingLevel.Information);
+            double milliSecondsRemaining;
+            if ((TotalProgress - CurrentProgress) == 0)
+            {
+                milliSecondsRemaining = 0;
+            }
+            else
+            {
+                milliSecondsRemaining = (double)(timeSoFar.TotalMilliseconds / CurrentProgress * (TotalProgress - CurrentProgress));
+            }
+
+            try
+            {
+                remaining = TimeSpan.FromMilliseconds(milliSecondsRemaining);
+            }
+            catch { }
+
+            ILoggingLevel level;
+
+            if (DisplayRed)
+            {
+                level = ILoggingLevel.Warning;
+            }
+            else
+            {
+                level = ILoggingLevel.Information;
+            }
+
+            Logging.Log($"{GetDISMLikeProgressBar(ProgressPercentage)} {remaining:hh\\:mm\\:ss\\.f}", severity: level, returnLine: false);
         }
 
-        internal static void ShowProgress(ulong TotalBytes, ulong BytesRead, ulong SourcePosition, DateTime startTime, ILogging Logging)
+        internal static void ShowProgress(ulong TotalBytes,
+                                          ulong BytesRead,
+                                          ulong SourcePosition,
+                                          DateTime startTime,
+                                          ILogging Logging)
         {
             DateTime now = DateTime.Now;
             TimeSpan timeSoFar = now - startTime;
 
-            double milliseconds = timeSoFar.TotalMilliseconds / BytesRead * (TotalBytes - BytesRead);
-            double ticks = milliseconds * TimeSpan.TicksPerMillisecond;
-            if (ticks > long.MaxValue || ticks < long.MinValue || double.IsNaN(ticks))
+            TimeSpan remaining = new(0);
+
+            double milliSecondsRemaining;
+            if ((TotalBytes - BytesRead) == 0)
             {
-                milliseconds = 0;
+                milliSecondsRemaining = 0;
             }
-            TimeSpan remaining = TimeSpan.FromMilliseconds(milliseconds);
+            else
+            {
+                milliSecondsRemaining = (double)(timeSoFar.TotalMilliseconds / BytesRead * (TotalBytes - BytesRead));
+            }
+
+            try
+            {
+                remaining = TimeSpan.FromMilliseconds(milliSecondsRemaining);
+            }
+            catch { }
 
             double speed = Math.Round(SourcePosition / 1024L / 1024L / timeSoFar.TotalSeconds);
 
-            Logging.Log(string.Format($"{GetDismLikeProgBar(int.Parse((BytesRead * 100 / TotalBytes).ToString()))} {speed}MB/s {Math.Truncate(remaining.TotalHours):00}:{remaining.Minutes:00}:{remaining.Seconds:00}.{remaining.Milliseconds:000}"), returnLine: false, severity: ILoggingLevel.Information);
+            Logging.Log(
+                $"{GetDISMLikeProgressBar(uint.Parse((BytesRead * 100 / TotalBytes).ToString()))} {speed}MB/s {Math.Truncate(remaining.TotalHours):00}:{remaining.Minutes:00}:{remaining.Seconds:00}.{remaining.Milliseconds:000}",
+                returnLine: false,
+                severity: ILoggingLevel.Information);
         }
     }
 }
