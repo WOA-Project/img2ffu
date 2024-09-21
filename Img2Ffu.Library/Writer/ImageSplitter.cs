@@ -56,12 +56,12 @@ namespace Img2Ffu.Writer
             return GPT;
         }
 
-        internal static (FlashPart[], List<Partition> partitions) GetImageSlices(Stream stream, uint BlockSize, string[] ExcludedPartitionNames, uint sectorSize, ILogging Logging)
+        internal static (FlashPart[], List<Partition> partitions) GetImageSlices(Stream stream, uint BlockSize, uint sectorSize, ILogging Logging)
         {
             GPT GPT = GetGPT(stream, BlockSize, sectorSize, Logging);
             uint sectorsInABlock = BlockSize / sectorSize;
 
-            List<FlashPart> flashParts = FlashPartFactory.GetFlashParts(GPT, stream, BlockSize, ExcludedPartitionNames, sectorSize, Logging);
+            List<FlashPart> flashParts = FlashPartFactory.GetFlashParts(GPT, sectorSize);
 
             FlashPart[] finalFlashParts = [.. flashParts];
 

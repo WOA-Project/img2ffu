@@ -75,7 +75,7 @@ namespace Img2Ffu.Writer
             (Stream InputStream, VirtualDisk? InputDisk) = OpenInput(InputForStore.InputFile, Logging);
 
             Logging.Log("Generating Image Slices...");
-            (FlashPart[] flashParts, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(InputStream, BlockSize, InputForStore.ExcludedPartitionNames, SectorSize, Logging);
+            (FlashPart[] flashParts, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(InputStream, BlockSize, SectorSize, Logging);
 
             Logging.Log("Generating Block Payloads...");
             KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts, BlockSize, InputForStore.MaximumNumberOfBlankBlocksAllowed, Logging);
