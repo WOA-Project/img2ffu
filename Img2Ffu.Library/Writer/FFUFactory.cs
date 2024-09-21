@@ -86,7 +86,7 @@ namespace Img2Ffu.Writer
             return WriteDescriptorsBuffer;
         }
 
-        private static byte[] GenerateHashTable(MemoryStream FFUMetadataHeaderTempFileStream, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, uint BlockSize)
+        private static byte[] GenerateHashTable(MemoryStream FFUMetadataHeaderTempFileStream, IEnumerable<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads, uint BlockSize)
         {
             _ = FFUMetadataHeaderTempFileStream.Seek(0, SeekOrigin.Begin);
 
@@ -236,7 +236,7 @@ namespace Img2Ffu.Writer
             +------------------------------+
         */
 
-        private static (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, FlashPart[] flashParts, VirtualDisk InputDisk) GenerateStore(string InputFile, string[] PlatformIDs, uint SectorSize, uint BlockSize, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion FlashUpdateVersion, ILogging Logging)
+        private static (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, FlashPart[] flashParts, VirtualDisk InputDisk) GenerateStore(string InputFile, string[] PlatformIDs, uint SectorSize, uint BlockSize, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion FlashUpdateVersion, ILogging Logging, bool IsFixedDiskLength = true)
         {
             Logging.Log("Opening input file...");
 
@@ -277,7 +277,6 @@ namespace Img2Ffu.Writer
             Logging.Log("Generating Block Payloads...");
             KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts, BlockSize, MaximumNumberOfBlankBlocksAllowed, Logging);
 
-            bool IsFixedDiskLength = false; // POC!
             BlockPayloads = BlockPayloadsGenerator.GetGPTPayloads(BlockPayloads, InputStream, BlockSize, IsFixedDiskLength);
 
             Logging.Log("Generating write descriptors...");
@@ -323,7 +322,12 @@ namespace Img2Ffu.Writer
             Logging.Log($"OS Version: {OperatingSystemVersion}");
             Logging.Log("");
 
-            (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, FlashPart[] flashParts, VirtualDisk InputDisk) = GenerateStore(InputFile, PlatformIDs, SectorSize, BlockSize, ExcludedPartitionNames, MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion, Logging);
+            List<(uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, FlashPart[] flashParts, VirtualDisk InputDisk)> StoreGenerationParameters = [];
+
+            StoreGenerationParameters.Add(GenerateStore(InputFile, PlatformIDs, SectorSize, BlockSize, ExcludedPartitionNames, MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion, Logging, IsFixedDiskLength: false)); // POC!
+
+            IEnumerable<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads = StoreGenerationParameters.SelectMany(x => x.BlockPayloads);
+            IEnumerable<FlashPart> flashParts = StoreGenerationParameters.SelectMany(x => x.flashParts);
 
             // Todo make this read the image itself
             Logging.Log("Generating full flash manifest...");
@@ -338,16 +342,20 @@ namespace Img2Ffu.Writer
             };
 
             Logging.Log("Generating store manifest...");
-            StoreManifest Store = new()
+            IEnumerable<(StoreManifest Store, List<GPT.Partition> partitions)> Stores = StoreGenerationParameters.Select(x =>
             {
-                SectorSize = SectorSize,
-                MinSectorCount = MinSectorCount
-            };
+                StoreManifest Store = new()
+                {
+                    SectorSize = SectorSize,
+                    MinSectorCount = x.MinSectorCount
+                };
+
+                return (Store, x.partitions);
+            });
 
             Logging.Log("Generating image manifest...");
-            string ImageManifest = ManifestIni.BuildUpManifest(FullFlash, Store, partitions);
+            string ImageManifest = ManifestIni.BuildUpManifest(FullFlash, Stores);
             byte[] ManifestBuffer = Encoding.ASCII.GetBytes(ImageManifest);
-
 
             Logging.Log("Generating image header...");
             ImageHeader ImageHeader = new()
@@ -390,23 +398,26 @@ namespace Img2Ffu.Writer
             Logging.Log("Writing Padding...");
             RoundUpToChunks(FFUMetadataHeaderStream, BlockSize);
 
-            //
-            // Store Header[0]
-            //
-            Logging.Log("Writing Store Header...");
-            FFUMetadataHeaderStream.Write(StoreHeaderBuffer, 0, StoreHeaderBuffer.Length);
+            foreach ((uint _, List<GPT.Partition> _, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] _, FlashPart[] _, VirtualDisk _) in StoreGenerationParameters)
+            {
+                //
+                // Store Header[0]
+                //
+                Logging.Log("Writing Store Header...");
+                FFUMetadataHeaderStream.Write(StoreHeaderBuffer, 0, StoreHeaderBuffer.Length);
 
-            //
-            // Write Descriptors[0]
-            //
-            Logging.Log("Writing Write Descriptors...");
-            FFUMetadataHeaderStream.Write(WriteDescriptorBuffer, 0, WriteDescriptorBuffer.Length);
+                //
+                // Write Descriptors[0]
+                //
+                Logging.Log("Writing Write Descriptors...");
+                FFUMetadataHeaderStream.Write(WriteDescriptorBuffer, 0, WriteDescriptorBuffer.Length);
 
-            //
-            // (Block Size) Padding[0]
-            //
-            Logging.Log("Writing Padding...");
-            RoundUpToChunks(FFUMetadataHeaderStream, BlockSize);
+                //
+                // (Block Size) Padding[0]
+                //
+                Logging.Log("Writing Padding...");
+                RoundUpToChunks(FFUMetadataHeaderStream, BlockSize);
+            }
 
             Logging.Log("Generating image hash table...");
             byte[] HashTable = GenerateHashTable(FFUMetadataHeaderStream, BlockPayloads, BlockSize);
@@ -430,10 +441,10 @@ namespace Img2Ffu.Writer
             Logging.Log("Opening FFU file for writing...");
             WriteFFUFile(FFUFile, SecurityHeaderBuffer, CatalogBuffer, HashTable, FFUMetadataHeaderBuffer, BlockPayloads, flashParts, BlockSize, Logging);
 
-            InputDisk?.Dispose();
+            StoreGenerationParameters.ForEach(x => x.InputDisk?.Dispose());
         }
 
-        private static void WriteFFUFile(string FFUFile, byte[] SecurityHeaderBuffer, byte[] CatalogBuffer, byte[] HashTable, byte[] FFUMetadataHeaderBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, FlashPart[] flashParts, uint BlockSize, ILogging Logging)
+        private static void WriteFFUFile(string FFUFile, byte[] SecurityHeaderBuffer, byte[] CatalogBuffer, byte[] HashTable, byte[] FFUMetadataHeaderBuffer, IEnumerable<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads, IEnumerable<FlashPart> flashParts, uint BlockSize, ILogging Logging)
         {
             FileStream FFUFileStream = new(FFUFile, FileMode.CreateNew);
 
@@ -483,14 +494,14 @@ namespace Img2Ffu.Writer
             // Data Blocks
             //
             Logging.Log("Writing Data Blocks...");
-            for (ulong CurrentBlockIndex = 0; CurrentBlockIndex < (ulong)BlockPayloads.LongLength; CurrentBlockIndex++)
+            for (ulong CurrentBlockIndex = 0; CurrentBlockIndex < (ulong)BlockPayloads.LongCount(); CurrentBlockIndex++)
             {
                 BlockPayload BlockPayload = BlockPayloads.ElementAt((int)CurrentBlockIndex).Value;
                 byte[] BlockBuffer = BlockPayload.ReadBlock(BlockSize);
 
                 FFUFileStream.Write(BlockBuffer, 0, (int)BlockSize);
 
-                ulong totalBytes = (ulong)BlockPayloads.LongLength * BlockSize;
+                ulong totalBytes = (ulong)BlockPayloads.LongCount() * BlockSize;
                 ulong bytesRead = CurrentBlockIndex * BlockSize;
                 ulong sourcePosition = CurrentBlockIndex * BlockSize;
 

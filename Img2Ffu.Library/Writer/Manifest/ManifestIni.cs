@@ -161,17 +161,21 @@ namespace Img2Ffu.Writer.Manifest
             return StoragePoolSection;
         }
 
-        internal static string BuildUpManifest(FullFlashManifest fullFlash, StoreManifest store, List<PartitionManifest> partitions)
+        internal static string BuildUpManifest(FullFlashManifest fullFlash, IEnumerable<(StoreManifest store, List<PartitionManifest> partitions)> StoreGenerationParameters)
         {
             string Manifest = "";
 
             Manifest += BuildUpFullFlashSection(fullFlash);
             Manifest += BuildUpStoragePoolSection();
-            Manifest += BuildUpStoreSection(store);
 
-            foreach (PartitionManifest partition in partitions)
+            foreach ((StoreManifest store, List<PartitionManifest> partitions) in StoreGenerationParameters)
             {
-                Manifest += BuildUpPartitionSection(partition);
+                Manifest += BuildUpStoreSection(store);
+
+                foreach (PartitionManifest partition in partitions)
+                {
+                    Manifest += BuildUpPartitionSection(partition);
+                }
             }
 
             return Manifest;
@@ -190,9 +194,9 @@ namespace Img2Ffu.Writer.Manifest
             return Parts;
         }
 
-        internal static string BuildUpManifest(FullFlashManifest fullFlash, StoreManifest store, List<GPT.Partition> partitions)
+        internal static string BuildUpManifest(FullFlashManifest fullFlash, IEnumerable<(StoreManifest store, List<GPT.Partition> partitions)> StoreGenerationParameters)
         {
-            return BuildUpManifest(fullFlash, store, GPTPartitionsToPartitions(partitions));
+            return BuildUpManifest(fullFlash, StoreGenerationParameters.Select(x => (x.store, GPTPartitionsToPartitions(x.partitions))));
         }
     }
 }

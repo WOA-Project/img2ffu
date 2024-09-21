@@ -27,7 +27,7 @@ using System.Security.Cryptography;
 
 namespace Img2Ffu.Writer.Flashing
 {
-    internal class BlockPayloadsGenerator
+    internal static class BlockPayloadsGenerator
     {
         private static void ShowProgress(ulong CurrentProgress, ulong TotalProgress, DateTime startTime, bool DisplayRed, ILogging Logging)
         {
@@ -105,6 +105,14 @@ namespace Img2Ffu.Writer.Flashing
                 0
             ));
 
+            // When a store has a fixed size (cannot expand or vary with end user configuration)
+            // We want to write the final working GPT as a final step
+            // This is useful to prevent end users from having a half written disk being written
+            // and then attempted to be booted on, as it would land directly in EDL with a blank GPT
+            // This behavior is default for Windows Phone and Windows Mobile and WCOS
+            // On some cases, the GPT should be written not last but after all critical partitions got written.
+            // For example, on eMMC layouts of WP, you generally want it written after PLAT is written to the device
+            // We do not implement this just yet here.
             if (IsFixedDiskLength)
             {
                 ulong endGPTChunkStartLocation = (ulong)stream.Length - BlockSize;
@@ -140,6 +148,14 @@ namespace Img2Ffu.Writer.Flashing
                     0
                 )));
             }
+            // Otherwise, directly write the GPT as second step, and last step.
+            // In-between, normal data is being written, and at first, the GPT is wiped.
+            // This behavior was confirmed on officially made FFUs for WCOS.
+            // On some cases, the GPT should be written not last but after all critical partitions got written.
+            // This is useful to prevent end users from having a half written disk being written
+            // and then attempted to be booted on, as it would land directly in EDL with a blank GPT
+            // For example, on eMMC layouts of WP, you generally want it written after PLAT is written to the device
+            // We do not implement this just yet here.
             else
             {
                 // Now add back both GPTs
