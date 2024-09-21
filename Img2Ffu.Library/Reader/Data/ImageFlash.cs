@@ -148,7 +148,7 @@ namespace Img2Ffu.Reader.Data
                 {
                     throw new NotImplementedException("The compression algorithm this data block uses is not currently implemented.");
                 }
-                
+
                 for (ulong i = 0; i < dataBlockIndex; i++)
                 {
                     WriteDescriptor writeDescriptor = currentStore.WriteDescriptors[(int)i];
