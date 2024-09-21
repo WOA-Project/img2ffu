@@ -363,7 +363,7 @@ namespace Img2Ffu.Streams
                 throw new Win32Exception(Marshal.GetLastWin32Error());
             }
 
-            x = (T)Marshal.PtrToStructure(lpOutBuffer, typeof(T));
+            x = (T)Marshal.PtrToStructure(lpOutBuffer, typeof(T))!;
             Marshal.FreeHGlobal(lpOutBuffer);
 
             handleValue.Close();

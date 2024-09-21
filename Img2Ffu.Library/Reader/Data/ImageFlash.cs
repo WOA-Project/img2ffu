@@ -33,13 +33,13 @@ namespace Img2Ffu.Reader.Data
             if (ImageHeader.Size == 28u)
             {
                 byte[] DeviceTargetingInfoCountBuffer = new byte[4];
-                stream.Read(DeviceTargetingInfoCountBuffer, 0, 4);
+                _ = stream.Read(DeviceTargetingInfoCountBuffer, 0, 4);
 
                 DeviceTargetingInfoCount = BitConverter.ToUInt32(DeviceTargetingInfoCountBuffer);
             }
 
             // Account for FFUs with Device Target Info Count and Device Target Infos and potentially other things...
-            stream.Seek(InitialStreamPosition + ImageHeader.Size, SeekOrigin.Begin);
+            _ = stream.Seek(InitialStreamPosition + ImageHeader.Size, SeekOrigin.Begin);
 
             byte[] manifestDataBuffer = new byte[ImageHeader.ManifestLength];
             _ = stream.Read(manifestDataBuffer, 0, (int)ImageHeader.ManifestLength);

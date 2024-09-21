@@ -273,7 +273,7 @@ namespace Img2Ffu.Reader
                 bool isLastBlock = currentBlock == endBlockIndex - 1;
 
                 long bytesToRead = blockSize;
-                long bufferDestination = extraStartBytes + (currentBlock - startBlockIndex - 1) * blockSize;
+                long bufferDestination = extraStartBytes + ((currentBlock - startBlockIndex - 1) * blockSize);
 
                 if (isFirstBlock)
                 {
@@ -361,7 +361,7 @@ namespace Img2Ffu.Reader
 
                     long virtualPosition = virtualDiskBlockNumber * blockSize;
 
-                    DestinationStream.Seek(OriginalDestinationStreamPosition + virtualPosition, SeekOrigin.Begin);
+                    _ = DestinationStream.Seek(OriginalDestinationStreamPosition + virtualPosition, SeekOrigin.Begin);
 
                     byte[] buffer = image.GetStoreDataBlock(Stream, storeIndex, (ulong)physicalDiskBlockNumber);
                     currentWrittenBytes += (ulong)blockSize;

@@ -32,7 +32,7 @@
             }
             TimeSpan remaining = TimeSpan.FromMilliseconds(milliseconds);
 
-            Logging.Log(string.Format($"{LoggingHelpers.GetDismLikeProgBar(int.Parse((CurrentProgress * 100 / TotalProgress).ToString()))} {Math.Truncate(remaining.TotalHours):00}:{remaining.Minutes:00}:{remaining.Seconds:00}.{remaining.Milliseconds:000}"), returnLine: false, severity: DisplayRed ? ILoggingLevel.Warning : ILoggingLevel.Information);
+            Logging.Log(string.Format($"{GetDismLikeProgBar(int.Parse((CurrentProgress * 100 / TotalProgress).ToString()))} {Math.Truncate(remaining.TotalHours):00}:{remaining.Minutes:00}:{remaining.Seconds:00}.{remaining.Milliseconds:000}"), returnLine: false, severity: DisplayRed ? ILoggingLevel.Warning : ILoggingLevel.Information);
         }
 
         internal static void ShowProgress(ulong TotalBytes, ulong BytesRead, ulong SourcePosition, DateTime startTime, ILogging Logging)
@@ -42,7 +42,7 @@
 
             double milliseconds = timeSoFar.TotalMilliseconds / BytesRead * (TotalBytes - BytesRead);
             double ticks = milliseconds * TimeSpan.TicksPerMillisecond;
-            if ((ticks > long.MaxValue) || (ticks < long.MinValue) || double.IsNaN(ticks))
+            if (ticks > long.MaxValue || ticks < long.MinValue || double.IsNaN(ticks))
             {
                 milliseconds = 0;
             }

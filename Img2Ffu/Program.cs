@@ -49,7 +49,7 @@ namespace Img2Ffu
 
                     if (!File.Exists(ExcludedPartitionNamesFilePath))
                     {
-                        ExcludedPartitionNamesFilePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), o.ExcludedPartitionNamesFilePath);
+                        ExcludedPartitionNamesFilePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, o.ExcludedPartitionNamesFilePath);
                     }
 
                     if (!File.Exists(ExcludedPartitionNamesFilePath))
@@ -121,7 +121,7 @@ namespace Img2Ffu
                 {
                     Logging.Log("Something happened.", LoggingLevel.Error);
                     Logging.Log(ex.Message, LoggingLevel.Error);
-                    Logging.Log(ex.StackTrace, LoggingLevel.Error);
+                    Logging.Log(ex.StackTrace!, LoggingLevel.Error);
                     Environment.Exit(1);
                 }
             });

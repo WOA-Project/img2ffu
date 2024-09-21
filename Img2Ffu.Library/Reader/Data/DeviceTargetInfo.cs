@@ -16,19 +16,40 @@
 
         public uint BaseboardProductLength;
 
-        public string Manufacturer { get; }
+        public string Manufacturer
+        {
+            get;
+        }
 
-        public string Family { get; }
+        public string Family
+        {
+            get;
+        }
 
-        public string ProductName { get; }
+        public string ProductName
+        {
+            get;
+        }
 
-        public string ProductVersion { get; }
+        public string ProductVersion
+        {
+            get;
+        }
 
-        public string SKUNumber { get; }
+        public string SKUNumber
+        {
+            get;
+        }
 
-        public string BaseboardManufacturer { get; }
+        public string BaseboardManufacturer
+        {
+            get;
+        }
 
-        public string BaseboardProduct { get; }
+        public string BaseboardProduct
+        {
+            get;
+        }
 
         public DeviceTargetInfo(Stream stream)
         {

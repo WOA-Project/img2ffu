@@ -1,4 +1,5 @@
 ﻿using DiscUtils;
+using Img2Ffu.Streams;
 using Img2Ffu.Writer.Data;
 using Img2Ffu.Writer.Flashing;
 
@@ -31,7 +32,7 @@ namespace Img2Ffu.Writer
 
             if (InputFile.Contains(@"\\.\physicaldrive", StringComparison.CurrentCultureIgnoreCase))
             {
-                InputStream = new Img2Ffu.Streams.DeviceStream(InputFile, FileAccess.Read);
+                InputStream = new DeviceStream(InputFile, FileAccess.Read);
             }
             else if (File.Exists(InputFile) && Path.GetExtension(InputFile).Equals(".vhd", StringComparison.InvariantCultureIgnoreCase))
             {

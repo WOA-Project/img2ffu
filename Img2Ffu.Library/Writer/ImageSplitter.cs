@@ -254,7 +254,7 @@ namespace Img2Ffu.Writer
                 ulong CurrentBlockStartOffset = CurrentBlockIndex * BlockSize;
                 ulong CurrentBlockEndOffset = CurrentBlockStartOffset + BlockSize;
 
-                if (AllocationMap.Any(Allocation => (CurrentBlockEndOffset > Allocation.StartOffset) && ((Allocation.StartOffset + Allocation.Length) > CurrentBlockStartOffset)))
+                if (AllocationMap.Any(Allocation => CurrentBlockEndOffset > Allocation.StartOffset && Allocation.StartOffset + Allocation.Length > CurrentBlockStartOffset))
                 {
                     if (AllocatedBlocks.Count == 0)
                     {
