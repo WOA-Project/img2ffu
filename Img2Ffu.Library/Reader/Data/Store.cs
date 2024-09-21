@@ -30,8 +30,8 @@ namespace Img2Ffu.Reader.Data
                         break;
                     }
 
-                    ASCIIEncoding asciiEnconding = new();
-                    string PlatformID = asciiEnconding.GetString(StoreHeader.PlatformId[lastFinding..i]);
+                    ASCIIEncoding asciiEncoding = new();
+                    string PlatformID = asciiEncoding.GetString(StoreHeader.PlatformId[lastFinding..i]);
                     PlatformIDs.Add(PlatformID);
                     lastFinding = i + 1;
                 }

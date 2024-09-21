@@ -60,7 +60,40 @@ namespace Img2Ffu
                         return;
                     }
 
-                    FFUFactory.GenerateFFU(o.InputFile, o.FFUFile, o.PlatformID.Split(';'), o.SectorSize, o.BlockSize, o.AntiTheftVersion, o.OperatingSystemVersion, File.ReadAllLines(ExcludedPartitionNamesFilePath), o.MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion.V2, [], new LoggingImplementation());
+                    //
+                    // Example for V2 below
+                    // Note: You can add more than one store here
+                    //
+
+                    (string InputFile, string DevicePath, bool IsFixedDiskLength)[] InputsForStores =
+                    [
+                        (
+                            o.InputFile,
+                            "VenHw(860845C1-BE09-4355-8BC1-30D64FF8E63A)", // UFS LUN 0
+                            false // Variable disk length
+                        )
+                    ];
+
+                    FlashUpdateVersion flashUpdateVersion = FlashUpdateVersion.V2;
+
+                    //
+                    // Example for V1 below
+                    //
+
+                    /*
+                     * (string InputFile, string DevicePath, bool IsFixedDiskLength)[] InputsForStores =
+                     * [
+                     *    (
+                     *         o.InputFile,
+                     *         "VenHw(B615F1F5-5088-43CD-809C-A16E52487D00)", // eMMC (User)
+                     *         true // Variable disk length
+                     *     )
+                     * ];
+                     *
+                     * FlashUpdateVersion flashUpdateVersion = FlashUpdateVersion.V1;
+                     */
+
+                    FFUFactory.GenerateFFU(InputsForStores, o.FFUFile, o.PlatformID.Split(';'), o.SectorSize, o.BlockSize, o.AntiTheftVersion, o.OperatingSystemVersion, File.ReadAllLines(ExcludedPartitionNamesFilePath), o.MaximumNumberOfBlankBlocksAllowed, flashUpdateVersion, [], new LoggingImplementation());
                 }
                 catch (Exception ex)
                 {

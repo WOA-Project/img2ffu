@@ -25,7 +25,19 @@ namespace Img2Ffu.Writer
             return WriteDescriptorsBuffer;
         }
 
-        internal static (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, VirtualDisk InputDisk) GenerateStore(string InputFile, string[] PlatformIDs, uint SectorSize, uint BlockSize, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion FlashUpdateVersion, ILogging Logging, bool IsFixedDiskLength = true)
+        internal static (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, VirtualDisk InputDisk) GenerateStore(
+            string InputFile,
+            string[] PlatformIDs,
+            uint SectorSize,
+            uint BlockSize,
+            string[] ExcludedPartitionNames,
+            uint MaximumNumberOfBlankBlocksAllowed,
+            FlashUpdateVersion FlashUpdateVersion,
+            ILogging Logging,
+            bool IsFixedDiskLength,
+            ushort NumberOfStores,
+            ushort StoreIndex,
+            string DevicePath)
         {
             Logging.Log("Opening input file...");
 
@@ -78,13 +90,10 @@ namespace Img2Ffu.Writer
                 WriteDescriptorLength = (uint)WriteDescriptorBuffer.Length,
                 PlatformIds = PlatformIDs,
                 BlockSize = BlockSize,
-
-                // POC Begins
-                NumberOfStores = 1,
-                StoreIndex = 1,
-                DevicePath = "VenHw(860845C1-BE09-4355-8BC1-30D64FF8E63A)",
+                NumberOfStores = NumberOfStores,
+                StoreIndex = StoreIndex,
+                DevicePath = DevicePath,
                 StorePayloadSize = (ulong)BlockPayloads.LongLength * BlockSize
-                // POC Ends
             };
 
             byte[] StoreHeaderBuffer = store.GetResultingBuffer(FlashUpdateVersion, FlashUpdateType.Full, CompressionAlgorithm.None);

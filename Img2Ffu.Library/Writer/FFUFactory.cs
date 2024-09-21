@@ -159,7 +159,7 @@ namespace Img2Ffu.Writer
             +------------------------------+
         */
 
-        public static void GenerateFFU(string InputFile, string FFUFile, string[] PlatformIDs, uint SectorSize, uint BlockSize, string AntiTheftVersion, string OperatingSystemVersion, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion FlashUpdateVersion, List<DeviceTargetInfo> deviceTargetInfos, ILogging Logging)
+        public static void GenerateFFU((string InputFile, string DevicePath, bool IsFixedDiskLength)[] InputsForStores, string FFUFile, string[] PlatformIDs, uint SectorSize, uint BlockSize, string AntiTheftVersion, string OperatingSystemVersion, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion FlashUpdateVersion, List<DeviceTargetInfo> deviceTargetInfos, ILogging Logging)
         {
             if (File.Exists(FFUFile))
             {
@@ -167,7 +167,6 @@ namespace Img2Ffu.Writer
                 return;
             }
 
-            Logging.Log($"Input image: {InputFile}");
             Logging.Log($"Destination image: {FFUFile}");
             Logging.Log($"Platform IDs: {string.Join("\nPlatform IDs: ", PlatformIDs)}");
             Logging.Log($"Sector Size: {SectorSize}");
@@ -190,20 +189,46 @@ namespace Img2Ffu.Writer
 
             List<(uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, VirtualDisk InputDisk)> StoreGenerationParameters = [];
 
-            StoreGenerationParameters.Add(StoreFactory.GenerateStore(InputFile, PlatformIDs, SectorSize, BlockSize, ExcludedPartitionNames, MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion, Logging, IsFixedDiskLength: false)); // POC!
+            ushort StoreIndex = 0;
+
+            foreach ((string InputFile, string DevicePath, bool IsFixedDiskLength) in InputsForStores)
+            {
+                // FFU Stores index starting from 1, not 0
+                StoreIndex++;
+
+                Logging.Log($"Input image: {InputFile}");
+                Logging.Log($"Device Path: {DevicePath}");
+                Logging.Log($"Is Fixed Disk Length: {IsFixedDiskLength}");
+
+                (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, VirtualDisk InputDisk) GeneratedStoreParameters = StoreFactory.GenerateStore(
+                    InputFile,
+                    PlatformIDs,
+                    SectorSize,
+                    BlockSize,
+                    ExcludedPartitionNames,
+                    MaximumNumberOfBlankBlocksAllowed,
+                    FlashUpdateVersion,
+                    Logging,
+                    IsFixedDiskLength,
+                    (ushort)InputsForStores.Length,
+                    StoreIndex,
+                    DevicePath);
+
+                StoreGenerationParameters.Add(GeneratedStoreParameters);
+            }
 
             IEnumerable<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads = StoreGenerationParameters.SelectMany(x => x.BlockPayloads);
 
             Logging.Log("Generating store manifest...");
-            IEnumerable<(StoreManifest Store, List<GPT.Partition> partitions)> Stores = StoreGenerationParameters.Select(x =>
+            IEnumerable<(StoreManifest StoreManifest, List<GPT.Partition> partitions)> Stores = StoreGenerationParameters.Select(x =>
             {
-                StoreManifest Store = new()
+                StoreManifest StoreManifest = new()
                 {
                     SectorSize = SectorSize,
                     MinSectorCount = x.MinSectorCount
                 };
 
-                return (Store, x.partitions);
+                return (StoreManifest, x.partitions);
             });
 
             Logging.Log("Generating image manifest...");
