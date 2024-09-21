@@ -74,7 +74,7 @@ namespace Img2Ffu
                         (
                             o.InputFile,
                             "VenHw(860845C1-BE09-4355-8BC1-30D64FF8E63A)", // UFS LUN 0
-                            false, // Variable disk length
+                            false, // Fixed disk length
                             o.MaximumNumberOfBlankBlocksAllowed,
                             ExcludedPartitionNames
                         )
@@ -92,7 +92,7 @@ namespace Img2Ffu
                      *    (
                      *         o.InputFile,
                      *         "VenHw(B615F1F5-5088-43CD-809C-A16E52487D00)", // eMMC (User)
-                     *         true, // Variable disk length
+                     *         true, // Fixed disk length
                      *         o.MaximumNumberOfBlankBlocksAllowed,
                      *         ExcludedPartitionNames
                      *     )
