@@ -84,9 +84,9 @@ namespace Img2Ffu.Writer.Data
         // Must be followed by the unicode string of the device path
         // So the total size would be doubled from DevicePathLength in bytes in the binary
 
-        private byte[] DevicePathBuffer;
+        private byte[]? DevicePathBuffer;
 
-        public required string DevicePath
+        public string? DevicePath
         {
             get; set;
         }
@@ -109,13 +109,18 @@ namespace Img2Ffu.Writer.Data
                     CompressionAlgorithm = (uint)storeHeaderCompressionAlgorithm;
                     break;
                 case FlashUpdateVersion.V2:
+                    if (!string.IsNullOrEmpty(DevicePath))
+                    {
+                        throw new ArgumentException(nameof(DevicePath));
+                    }
+
                     MajorVersion = 2;
                     MinorVersion = 0;
                     FullFlashMajorVersion = 2;
                     FullFlashMinorVersion = 0;
                     UnicodeEncoding UnicodeEncoding = new();
-                    DevicePathBuffer = UnicodeEncoding.GetBytes(DevicePath.ToCharArray());
-                    DevicePathLength = (ushort)DevicePath.Length;
+                    DevicePathBuffer = UnicodeEncoding.GetBytes(DevicePath!.ToCharArray());
+                    DevicePathLength = (ushort)DevicePath!.Length;
                     break;
             }
 
@@ -176,7 +181,7 @@ namespace Img2Ffu.Writer.Data
                     binaryWriter.Write(StoreIndex);
                     binaryWriter.Write(StorePayloadSize);
                     binaryWriter.Write(DevicePathLength);
-                    binaryWriter.Write(DevicePathBuffer);
+                    binaryWriter.Write(DevicePathBuffer!);
                     break;
             }
 
