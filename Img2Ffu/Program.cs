@@ -25,6 +25,7 @@ using CommandLine;
 using Img2Ffu.Writer;
 using Img2Ffu.Writer.Data;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 
@@ -60,17 +61,22 @@ namespace Img2Ffu
                         return;
                     }
 
+                    string[] PlatformIDs = o.PlatformID.Split(';');
+                    string[] ExcludedPartitionNames = File.ReadAllLines(ExcludedPartitionNamesFilePath);
+
                     //
                     // Example for V2 below
                     // Note: You can add more than one store here
                     //
 
-                    (string InputFile, string DevicePath, bool IsFixedDiskLength)[] InputsForStores =
+                    InputForStore[] InputsForStores =
                     [
                         (
                             o.InputFile,
                             "VenHw(860845C1-BE09-4355-8BC1-30D64FF8E63A)", // UFS LUN 0
-                            false // Variable disk length
+                            false, // Variable disk length
+                            o.MaximumNumberOfBlankBlocksAllowed,
+                            ExcludedPartitionNames
                         )
                     ];
 
@@ -81,19 +87,35 @@ namespace Img2Ffu
                     //
 
                     /*
-                     * (string InputFile, string DevicePath, bool IsFixedDiskLength)[] InputsForStores =
+                     * InputForStore[] InputsForStores =
                      * [
                      *    (
                      *         o.InputFile,
                      *         "VenHw(B615F1F5-5088-43CD-809C-A16E52487D00)", // eMMC (User)
-                     *         true // Variable disk length
+                     *         true, // Variable disk length
+                     *         o.MaximumNumberOfBlankBlocksAllowed,
+                     *         ExcludedPartitionNames
                      *     )
                      * ];
                      *
                      * FlashUpdateVersion flashUpdateVersion = FlashUpdateVersion.V1;
                      */
 
-                    FFUFactory.GenerateFFU(InputsForStores, o.FFUFile, o.PlatformID.Split(';'), o.SectorSize, o.BlockSize, o.AntiTheftVersion, o.OperatingSystemVersion, File.ReadAllLines(ExcludedPartitionNamesFilePath), o.MaximumNumberOfBlankBlocksAllowed, flashUpdateVersion, [], new LoggingImplementation());
+                    LoggingImplementation logging = new();
+
+                    List<DeviceTargetInfo> deviceTargetingInformations = [];
+
+                    FFUFactory.GenerateFFU(
+                        InputsForStores,
+                        o.OutputFFUFile,
+                        PlatformIDs,
+                        o.SectorSize,
+                        o.BlockSize,
+                        o.AntiTheftVersion,
+                        o.OperatingSystemVersion,
+                        flashUpdateVersion,
+                        deviceTargetingInformations,
+                        logging);
                 }
                 catch (Exception ex)
                 {

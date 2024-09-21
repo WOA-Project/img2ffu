@@ -1,7 +1,6 @@
 ﻿using DiscUtils;
 using Img2Ffu.Writer.Data;
 using Img2Ffu.Writer.Flashing;
-using Img2Ffu.Writer;
 
 namespace Img2Ffu.Writer
 {
@@ -25,22 +24,8 @@ namespace Img2Ffu.Writer
             return WriteDescriptorsBuffer;
         }
 
-        internal static (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, VirtualDisk InputDisk) GenerateStore(
-            string InputFile,
-            string[] PlatformIDs,
-            uint SectorSize,
-            uint BlockSize,
-            string[] ExcludedPartitionNames,
-            uint MaximumNumberOfBlankBlocksAllowed,
-            FlashUpdateVersion FlashUpdateVersion,
-            ILogging Logging,
-            bool IsFixedDiskLength,
-            ushort NumberOfStores,
-            ushort StoreIndex,
-            string DevicePath)
+        private static (Stream InputStream, VirtualDisk? InputDisk) OpenInput(string InputFile, ILogging Logging)
         {
-            Logging.Log("Opening input file...");
-
             Stream InputStream;
             VirtualDisk? InputDisk = null;
 
@@ -69,16 +54,32 @@ namespace Img2Ffu.Writer
             else
             {
                 Logging.Log("Unknown input specified");
-                return (0, null, null, null, null, null);
+                throw new Exception($"Unknown Input Specified: {InputFile}");
             }
 
+            return (InputStream, InputDisk);
+        }
+
+        internal static (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, VirtualDisk? InputDisk) GenerateStore(
+            InputForStore InputForStore,
+            string[] PlatformIDs,
+            uint SectorSize,
+            uint BlockSize,
+            FlashUpdateVersion FlashUpdateVersion,
+            ILogging Logging,
+            ushort NumberOfStores,
+            ushort StoreIndex)
+        {
+            Logging.Log("Opening input file...");
+            (Stream InputStream, VirtualDisk? InputDisk) = OpenInput(InputForStore.InputFile, Logging);
+
             Logging.Log("Generating Image Slices...");
-            (FlashPart[] flashParts, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(InputStream, BlockSize, ExcludedPartitionNames, SectorSize, Logging);
+            (FlashPart[] flashParts, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(InputStream, BlockSize, InputForStore.ExcludedPartitionNames, SectorSize, Logging);
 
             Logging.Log("Generating Block Payloads...");
-            KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts, BlockSize, MaximumNumberOfBlankBlocksAllowed, Logging);
+            KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts, BlockSize, InputForStore.MaximumNumberOfBlankBlocksAllowed, Logging);
 
-            BlockPayloads = BlockPayloadsGenerator.GetGPTPayloads(BlockPayloads, InputStream, BlockSize, IsFixedDiskLength);
+            BlockPayloads = BlockPayloadsGenerator.GetGPTPayloads(BlockPayloads, InputStream, BlockSize, InputForStore.IsFixedDiskLength);
 
             Logging.Log("Generating write descriptors...");
             byte[] WriteDescriptorBuffer = GetWriteDescriptorsBuffer(BlockPayloads, FlashUpdateVersion);
@@ -92,7 +93,7 @@ namespace Img2Ffu.Writer
                 BlockSize = BlockSize,
                 NumberOfStores = NumberOfStores,
                 StoreIndex = StoreIndex,
-                DevicePath = DevicePath,
+                DevicePath = InputForStore.DevicePath,
                 StorePayloadSize = (ulong)BlockPayloads.LongLength * BlockSize
             };
 

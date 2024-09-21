@@ -34,7 +34,7 @@ namespace Img2Ffu
         }
 
         [Option('f', "ffu-file", HelpText = "A path to the FFU file to output", Required = true)]
-        public required string FFUFile
+        public required string OutputFFUFile
         {
             get; set;
         }

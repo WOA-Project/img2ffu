@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Img2Ffu.Writer
 {
-    public class FFUFactory
+    public static class FFUFactory
     {
         private static byte[] GenerateHashTable(MemoryStream FFUMetadataHeaderTempFileStream, IEnumerable<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads, uint BlockSize)
         {
@@ -159,7 +159,17 @@ namespace Img2Ffu.Writer
             +------------------------------+
         */
 
-        public static void GenerateFFU((string InputFile, string DevicePath, bool IsFixedDiskLength)[] InputsForStores, string FFUFile, string[] PlatformIDs, uint SectorSize, uint BlockSize, string AntiTheftVersion, string OperatingSystemVersion, string[] ExcludedPartitionNames, uint MaximumNumberOfBlankBlocksAllowed, FlashUpdateVersion FlashUpdateVersion, List<DeviceTargetInfo> deviceTargetInfos, ILogging Logging)
+        public static void GenerateFFU(
+            IEnumerable<InputForStore> InputsForStores,
+            string FFUFile,
+            string[] PlatformIDs,
+            uint SectorSize,
+            uint BlockSize,
+            string AntiTheftVersion,
+            string OperatingSystemVersion,
+            FlashUpdateVersion FlashUpdateVersion,
+            List<DeviceTargetInfo> deviceTargetingInformations,
+            ILogging Logging)
         {
             if (File.Exists(FFUFile))
             {
@@ -187,32 +197,29 @@ namespace Img2Ffu.Writer
                 AntiTheftVersion = AntiTheftVersion
             };
 
-            List<(uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, VirtualDisk InputDisk)> StoreGenerationParameters = [];
+            List<(uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, VirtualDisk? InputDisk)> StoreGenerationParameters = [];
 
             ushort StoreIndex = 0;
+            ushort StoreCount = (ushort)InputsForStores.Count();
 
-            foreach ((string InputFile, string DevicePath, bool IsFixedDiskLength) in InputsForStores)
+            foreach (InputForStore inputForStore in InputsForStores)
             {
                 // FFU Stores index starting from 1, not 0
                 StoreIndex++;
 
-                Logging.Log($"Input image: {InputFile}");
-                Logging.Log($"Device Path: {DevicePath}");
-                Logging.Log($"Is Fixed Disk Length: {IsFixedDiskLength}");
+                Logging.Log($"[Store #{StoreIndex}] Input image: {inputForStore.InputFile}");
+                Logging.Log($"[Store #{StoreIndex}] Device Path: {inputForStore.DevicePath}");
+                Logging.Log($"[Store #{StoreIndex}] Is Fixed Disk Length: {inputForStore.IsFixedDiskLength}");
 
-                (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, VirtualDisk InputDisk) GeneratedStoreParameters = StoreFactory.GenerateStore(
-                    InputFile,
+                (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, VirtualDisk? InputDisk) GeneratedStoreParameters = StoreFactory.GenerateStore(
+                    inputForStore,
                     PlatformIDs,
                     SectorSize,
                     BlockSize,
-                    ExcludedPartitionNames,
-                    MaximumNumberOfBlankBlocksAllowed,
                     FlashUpdateVersion,
                     Logging,
-                    IsFixedDiskLength,
-                    (ushort)InputsForStores.Length,
-                    StoreIndex,
-                    DevicePath);
+                    StoreCount,
+                    StoreIndex);
 
                 StoreGenerationParameters.Add(GeneratedStoreParameters);
             }
@@ -241,7 +248,7 @@ namespace Img2Ffu.Writer
                 ManifestLength = (uint)ManifestBuffer.Length
             };
 
-            byte[] ImageHeaderBuffer = ImageHeader.GetResultingBuffer(BlockSize, deviceTargetInfos.Count != 0, (uint)deviceTargetInfos.Count);
+            byte[] ImageHeaderBuffer = ImageHeader.GetResultingBuffer(BlockSize, deviceTargetingInformations.Count != 0, (uint)deviceTargetingInformations.Count);
 
             using MemoryStream FFUMetadataHeaderStream = new();
 
@@ -257,13 +264,13 @@ namespace Img2Ffu.Writer
             Logging.Log("Writing Image Manifest...");
             FFUMetadataHeaderStream.Write(ManifestBuffer, 0, ManifestBuffer.Length);
 
-            if (deviceTargetInfos.Count != 0)
+            if (deviceTargetingInformations.Count != 0)
             {
                 //
                 // Device Target Infos...
                 //
                 Logging.Log("Writing Device Target Infos...");
-                foreach (DeviceTargetInfo deviceTargetInfo in deviceTargetInfos)
+                foreach (DeviceTargetInfo deviceTargetInfo in deviceTargetingInformations)
                 {
                     byte[] deviceTargetInfoBuffer = deviceTargetInfo.GetResultingBuffer();
                     FFUMetadataHeaderStream.Write(deviceTargetInfoBuffer, 0, deviceTargetInfoBuffer.Length);
@@ -276,7 +283,7 @@ namespace Img2Ffu.Writer
             Logging.Log("Writing Padding...");
             ChunkUtils.RoundUpToChunks(FFUMetadataHeaderStream, BlockSize);
 
-            foreach ((uint _, List<GPT.Partition> _, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] _, VirtualDisk _) in StoreGenerationParameters)
+            foreach ((uint _, List<GPT.Partition> _, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] _, VirtualDisk? _) in StoreGenerationParameters)
             {
                 //
                 // Store Header[0]

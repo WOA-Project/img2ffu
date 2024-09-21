@@ -2,7 +2,7 @@
 
 namespace Img2Ffu.Writer.Data
 {
-    public class DeviceTargetInfo(string manufacturer, string family, string productName, string productVersion, string sKUNumber, string baseboardManufacturer, string baseboardProduct)
+    public class DeviceTargetInfo(string manufacturer, string family, string productName, string productVersion, string skuNumber, string baseboardManufacturer, string baseboardProduct)
     {
         private uint ManufacturerLength;
 
@@ -26,7 +26,7 @@ namespace Img2Ffu.Writer.Data
 
         public string ProductVersion { get; } = productVersion;
 
-        public string SKUNumber { get; } = sKUNumber;
+        public string SKUNumber { get; } = skuNumber;
 
         public string BaseboardManufacturer { get; } = baseboardManufacturer;
 
