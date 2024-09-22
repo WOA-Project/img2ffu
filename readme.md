@@ -32,7 +32,7 @@ An outdated documentation detailing some of the V1 and some of the V2 FFU file f
 
 - V1 (Used by Windows Phone 8.X, Windows 10 Mobile, IoT Core, early Windows Holographic, Windows Image App tooling (original versions), does not support multiple stores, does not support specifying a target device path to flash onto)
 - V1_COMPRESSION (Same as V1 with added compression support, mainly used by DISM /Capture-FFU)
-- V2 (Support for multiple stores, specific device path targets was added in this format revisin)
+- V2 (Support for multiple stores, specific device path targets was added in this format revision)
 
 ### Layout
 
