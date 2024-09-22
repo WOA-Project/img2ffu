@@ -107,7 +107,7 @@ namespace Img2Ffu.Writer.Data
                     CompressionAlgorithm = (uint)storeHeaderCompressionAlgorithm;
                     break;
                 case FlashUpdateVersion.V2:
-                    if (!string.IsNullOrEmpty(DevicePath))
+                    if (string.IsNullOrEmpty(DevicePath))
                     {
                         throw new ArgumentException(nameof(DevicePath));
                     }

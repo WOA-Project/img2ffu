@@ -246,8 +246,7 @@ namespace Img2Ffu
                 catch (Exception ex)
                 {
                     Logging.Log("Something happened.", LoggingLevel.Error);
-                    Logging.Log(ex.Message, LoggingLevel.Error);
-                    Logging.Log(ex.StackTrace!, LoggingLevel.Error);
+                    Logging.Log(ex.ToString(), LoggingLevel.Error);
                     Environment.Exit(1);
                 }
             });
