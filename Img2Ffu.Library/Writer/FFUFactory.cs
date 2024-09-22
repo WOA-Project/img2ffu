@@ -71,7 +71,7 @@ namespace Img2Ffu.Writer
             string AntiTheftVersion,
             string OperatingSystemVersion,
             FlashUpdateVersion FlashUpdateVersion,
-            List<DeviceTargetInfo> deviceTargetingInformations,
+            List<DeviceTargetInfo> deviceTargetingInformationArray,
             ILogging Logging)
         {
             if (File.Exists(FFUFile))
@@ -183,7 +183,7 @@ namespace Img2Ffu.Writer
                 ManifestLength = (uint)ManifestBuffer.Length
             };
 
-            byte[] ImageHeaderBuffer = ImageHeader.GetResultingBuffer(BlockSize, deviceTargetingInformations.Count != 0, (uint)deviceTargetingInformations.Count);
+            byte[] ImageHeaderBuffer = ImageHeader.GetResultingBuffer(BlockSize, deviceTargetingInformationArray.Count != 0, (uint)deviceTargetingInformationArray.Count);
 
             using MemoryStream FFUMetadataHeaderStream = new();
 
@@ -199,13 +199,13 @@ namespace Img2Ffu.Writer
             Logging.Log("Writing Image Manifest...");
             FFUMetadataHeaderStream.Write(ManifestBuffer, 0, ManifestBuffer.Length);
 
-            if (deviceTargetingInformations.Count != 0)
+            if (deviceTargetingInformationArray.Count != 0)
             {
                 //
-                // Device Target Infos...
+                // Device Target Information...
                 //
-                Logging.Log("Writing Device Target Infos...");
-                foreach (DeviceTargetInfo deviceTargetInfo in deviceTargetingInformations)
+                Logging.Log("Writing Device Target Information Array...");
+                foreach (DeviceTargetInfo deviceTargetInfo in deviceTargetingInformationArray)
                 {
                     byte[] deviceTargetInfoBuffer = deviceTargetInfo.GetResultingBuffer();
                     FFUMetadataHeaderStream.Write(deviceTargetInfoBuffer, 0, deviceTargetInfoBuffer.Length);
