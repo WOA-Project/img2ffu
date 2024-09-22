@@ -132,7 +132,7 @@ namespace Img2Ffu.Writer
 
             foreach (InputForStore inputForStore in InputsForStores)
             {
-                // FFU Stores index starting from 1, not 0
+                // FFU Stores indexing starts from 1, not 0
                 StoreIndex++;
 
                 Logging.Log($"[Store #{StoreIndex}] Input image: {inputForStore.InputFile}");
