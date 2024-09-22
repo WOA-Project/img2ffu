@@ -11,11 +11,20 @@ To be safe, it is recommended you check manually if the ignored partitions aren'
 
 The tool is able to work directly on a img file, or directly on a device eMMC. Please refer to the tool help for more information.
 
+This tool also adds support for making v2 format FFU files, as well as parsing v1, v2 and v1 with compression ffu files.
+
+You can see a few projects listed below making use of img2ffu library to parse FFU files:
+
+- [ffu2vhdx](https://github.com/gus33000/ffu2vhdx)
+- [MobilePackageGen](https://github.com/gus33000/MobilePackageGen)
+- [UnifiedFlashingPlatform](https://github.com/WOA-Project/UnifiedFlashingPlatform)
+
 ## Flashing guide
 
 Please always make a full device backup before attempting to flash any FFU. I recommend to use Win32DiskImager, to select one of the drive letters of your device, and back it up.
 
-**Important**: Win32DiskImager has no concept of partitions, it will backup and write the entire eMMC. You cannot restore just one partition using this tool, and it is recommended you do not attempt to flash in mass storage mode on devices!
+> [!IMPORTANT]
+> Win32DiskImager has no concept of partitions, it will backup and write the entire eMMC. You cannot restore just one partition using this tool, and it is recommended you do not attempt to flash in mass storage mode on devices!
 
 For factory unlocked devices, you can always flash the FFU file without any problem.
 For retail devices, you must unlock your device UEFI using WPinternals.
