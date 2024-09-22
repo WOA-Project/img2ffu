@@ -9,7 +9,10 @@ namespace Img2Ffu.Writer
 {
     public static class FFUFactory
     {
-        private static byte[] GenerateHashTable(MemoryStream FFUMetadataHeaderTempFileStream, IEnumerable<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads, uint BlockSize)
+        private static byte[] GenerateHashTable(
+            MemoryStream FFUMetadataHeaderTempFileStream,
+            IEnumerable<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads,
+            uint BlockSize)
         {
             _ = FFUMetadataHeaderTempFileStream.Seek(0, SeekOrigin.Begin);
 
@@ -20,6 +23,7 @@ namespace Img2Ffu.Writer
             {
                 byte[] buffer = new byte[BlockSize];
                 _ = FFUMetadataHeaderTempFileStream.Read(buffer, 0, (int)BlockSize);
+
                 byte[] hash = SHA256.HashData(buffer);
                 binaryWriter.Write(hash, 0, hash.Length);
             }
@@ -29,135 +33,13 @@ namespace Img2Ffu.Writer
                 binaryWriter.Write(payload.Key.Bytes, 0, payload.Key.Bytes.Length);
             }
 
-            byte[] HashTableBuffer = new byte[HashTableStream.Length];
             _ = HashTableStream.Seek(0, SeekOrigin.Begin);
+
+            byte[] HashTableBuffer = new byte[HashTableStream.Length];
             HashTableStream.ReadExactly(HashTableBuffer, 0, HashTableBuffer.Length);
 
             return HashTableBuffer;
         }
-
-        /*
-            *: Device Targeting Infos is optional
-            **: Only available on V1_COMPRESSION FFU file formats
-            ***: Only available on V2 FFU file formats
-            
-            - Validation Descriptor is always of size 0
-            - While it is possible in the struct to specify more than one Block
-              for a BlockDataEntry it shall only be equal to 0
-            - The hash table contains every hash of every block in the FFU file
-              starting from the Image Header to the end
-            - When using V1_COMPRESSION FFU file format, BlockDataEntry contains
-              an extra entry of size 4 bytes
-            - Multiple locations for a block data entry only copies the block
-              to multiple places
-            
-            +------------------------------+
-            |                              |
-            |       Security Header        |
-            |                              |
-            +------------------------------+
-            |                              |
-            |      Security Catalog        |
-            |                              |
-            +------------------------------+
-            |                              |
-            |         Hash Table           |
-            |                              |
-            +------------------------------+
-            |                              |
-            |     (Block Size) Padding     |
-            |                              |
-            +------------------------------+
-            |                              |
-            |         Image Header         |
-            |                              |
-            +------------------------------+
-            |              *               |
-            |    Image Header Extended     |
-            |   DeviceTargetingInfoCount   |
-            |                              |
-            +------------------------------+
-            |                              |
-            |        Image Manifest        |
-            |                              |
-            +------------------------------+
-            |              *               |
-            |  DeviceTargetInfoLengths[0]  |
-            |                              |
-            +------------------------------+
-            |              *               |
-            |  DeviceTargetInfoStrings[0]  |
-            |                              |
-            +------------------------------+
-            |              *               |
-            |            . . .             |
-            |                              |
-            +------------------------------+
-            |              *               |
-            |  DeviceTargetInfoLengths[n]  |
-            |                              |
-            +------------------------------+
-            |              *               |
-            |  DeviceTargetInfoStrings[n]  |
-            |                              |
-            +------------------------------+
-            |                              |
-            |     (Block Size) Padding     |
-            |                              |
-            +------------------------------+
-            |                              |
-            |        Store Header[0]       |
-            |                              |
-            +------------------------------+
-            |             * *              |
-            |      CompressionAlgo[0]      |
-            |                              |
-            +------------------------------+
-            |            * * *             |
-            |      Store Header Ex[0]      |
-            |                              |
-            +------------------------------+
-            |                              |
-            |   Validation Descriptor[0]   |
-            |                              |
-            +------------------------------+
-            |                              |
-            |     Write Descriptors[0]     |
-            |(BlockDataEntry+DiskLocations)|
-            +------------------------------+
-            |                              |
-            |   (Block Size) Padding[0]    |
-            |                              |
-            +------------------------------+
-            |            * * *             |
-            |            . . .             |
-            |                              |
-            +------------------------------+
-            |            * * *             |
-            |        Store Header[n]       |
-            |                              |
-            +------------------------------+
-            |            * * *             |
-            |      Store Header Ex[n]      |
-            |                              |
-            +------------------------------+
-            |            * * *             |
-            |   Validation Descriptor[n]   |
-            |                              |
-            +------------------------------+
-            |            * * *             |
-            |     Write Descriptors[n]     |
-            |(BlockDataEntry+DiskLocations)|
-            +------------------------------+
-            |            * * *             |
-            |   (Block Size) Padding[n]    |
-            |                              |
-            +------------------------------+
-            |                              |
-            |         Data Blocks          |
-            |                              |
-            +------------------------------+
-        */
 
         public static void GenerateFFU(
             IEnumerable<InputForStore> InputsForStores,
@@ -174,6 +56,12 @@ namespace Img2Ffu.Writer
             if (File.Exists(FFUFile))
             {
                 Logging.Log("File already exists!", ILoggingLevel.Error);
+                return;
+            }
+
+            if (!Directory.Exists(Path.GetDirectoryName(Path.GetFullPath(FFUFile))))
+            {
+                Logging.Log("Directory to place the FFU file into does not exist!", ILoggingLevel.Error);
                 return;
             }
 
@@ -197,7 +85,14 @@ namespace Img2Ffu.Writer
                 AntiTheftVersion = AntiTheftVersion
             };
 
-            List<(uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, VirtualDisk? InputDisk)> StoreGenerationParameters = [];
+            List<(
+                uint MinSectorCount, 
+                List<GPT.Partition> partitions, 
+                byte[] StoreHeaderBuffer, 
+                byte[] WriteDescriptorBuffer, 
+                KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, 
+                VirtualDisk? InputDisk
+            )> StoreGenerationParameters = [];
 
             ushort StoreIndex = 0;
             ushort StoreCount = (ushort)InputsForStores.Count();
@@ -211,7 +106,14 @@ namespace Img2Ffu.Writer
                 Logging.Log($"[Store #{StoreIndex}] Device Path: {inputForStore.DevicePath}");
                 Logging.Log($"[Store #{StoreIndex}] Is Fixed Disk Length: {inputForStore.IsFixedDiskLength}");
 
-                (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, VirtualDisk? InputDisk) GeneratedStoreParameters = StoreFactory.GenerateStore(
+                (
+                    uint MinSectorCount, 
+                    List<GPT.Partition> partitions, 
+                    byte[] StoreHeaderBuffer, 
+                    byte[] WriteDescriptorBuffer, 
+                    KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, 
+                    VirtualDisk? InputDisk
+                ) GeneratedStoreParameters = StoreFactory.GenerateStore(
                     inputForStore,
                     PlatformIDs,
                     SectorSize,
@@ -283,7 +185,14 @@ namespace Img2Ffu.Writer
             Logging.Log("Writing Padding...");
             ChunkUtils.RoundUpToChunks(FFUMetadataHeaderStream, BlockSize);
 
-            foreach ((uint _, List<GPT.Partition> _, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] _, VirtualDisk? _) in StoreGenerationParameters)
+            foreach ((
+                uint _, 
+                List<GPT.Partition> _, 
+                byte[] StoreHeaderBuffer, 
+                byte[] WriteDescriptorBuffer, 
+                KeyValuePair<ByteArrayKey, BlockPayload>[] _, 
+                VirtualDisk? _
+            ) in StoreGenerationParameters)
             {
                 //
                 // Store Header[0]
@@ -319,8 +228,9 @@ namespace Img2Ffu.Writer
 
             byte[] SecurityHeaderBuffer = security.GetResultingBuffer(BlockSize);
 
-            byte[] FFUMetadataHeaderBuffer = new byte[FFUMetadataHeaderStream.Length];
             _ = FFUMetadataHeaderStream.Seek(0, SeekOrigin.Begin);
+
+            byte[] FFUMetadataHeaderBuffer = new byte[FFUMetadataHeaderStream.Length];
             _ = FFUMetadataHeaderStream.Read(FFUMetadataHeaderBuffer, 0, (int)FFUMetadataHeaderStream.Length);
 
             Logging.Log("Opening FFU file for writing...");
@@ -330,7 +240,15 @@ namespace Img2Ffu.Writer
             StoreGenerationParameters.ForEach(x => x.InputDisk?.Dispose());
         }
 
-        private static void WriteFFUFile(string FFUFile, byte[] SecurityHeaderBuffer, byte[] CatalogBuffer, byte[] HashTable, byte[] FFUMetadataHeaderBuffer, IEnumerable<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads, uint BlockSize, ILogging Logging)
+        private static void WriteFFUFile(
+            string FFUFile,
+            byte[] SecurityHeaderBuffer,
+            byte[] CatalogBuffer,
+            byte[] HashTable,
+            byte[] FFUMetadataHeaderBuffer,
+            IEnumerable<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads,
+            uint BlockSize,
+            ILogging Logging)
         {
             FileStream FFUFileStream = new(FFUFile, FileMode.CreateNew);
 
@@ -366,20 +284,17 @@ namespace Img2Ffu.Writer
             // Write Descriptors[0]
             // (Block Size) Padding[0]
             //
-            Logging.Log("Writing Image Header...");
-            Logging.Log("Writing Image Manifest...");
-            Logging.Log("Writing Padding...");
-            Logging.Log("Writing Store Header...");
-            Logging.Log("Writing Write Descriptors...");
-            Logging.Log("Writing Padding...");
+            Logging.Log("Writing FFU Metadata Header...");
             FFUFileStream.Write(FFUMetadataHeaderBuffer, 0, FFUMetadataHeaderBuffer.Length);
-
-            DateTime startTime = DateTime.Now;
 
             //
             // Data Blocks
             //
             Logging.Log("Writing Data Blocks...");
+
+            DateTime startTime = DateTime.Now;
+            ulong totalBytes = (ulong)BlockPayloads.LongCount() * BlockSize;
+
             for (ulong CurrentBlockIndex = 0; CurrentBlockIndex < (ulong)BlockPayloads.LongCount(); CurrentBlockIndex++)
             {
                 BlockPayload BlockPayload = BlockPayloads.ElementAt((int)CurrentBlockIndex).Value;
@@ -387,11 +302,9 @@ namespace Img2Ffu.Writer
 
                 FFUFileStream.Write(BlockBuffer, 0, (int)BlockSize);
 
-                ulong totalBytes = (ulong)BlockPayloads.LongCount() * BlockSize;
                 ulong bytesRead = CurrentBlockIndex * BlockSize;
-                ulong sourcePosition = CurrentBlockIndex * BlockSize;
 
-                LoggingHelpers.ShowProgress(totalBytes, bytesRead, sourcePosition, startTime, Logging);
+                LoggingHelpers.ShowProgress(totalBytes, bytesRead, bytesRead, startTime, Logging);
             }
             Logging.Log("");
 

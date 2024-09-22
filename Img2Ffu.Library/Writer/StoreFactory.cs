@@ -61,7 +61,14 @@ namespace Img2Ffu.Writer
             return (InputStream, InputDisk);
         }
 
-        internal static (uint MinSectorCount, List<GPT.Partition> partitions, byte[] StoreHeaderBuffer, byte[] WriteDescriptorBuffer, KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, VirtualDisk? InputDisk) GenerateStore(
+        internal static (
+            uint MinSectorCount, 
+            List<GPT.Partition> partitions, 
+            byte[] StoreHeaderBuffer, 
+            byte[] WriteDescriptorBuffer, 
+            KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, 
+            VirtualDisk? InputDisk
+        ) GenerateStore(
             InputForStore InputForStore,
             string[] PlatformIDs,
             uint SectorSize,
@@ -75,10 +82,17 @@ namespace Img2Ffu.Writer
             (Stream InputStream, VirtualDisk? InputDisk) = OpenInput(InputForStore.InputFile, Logging);
 
             Logging.Log("Generating Image Slices...");
-            (FlashPart[] flashParts, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(InputStream, BlockSize, InputForStore.ExcludedPartitionNames, SectorSize, Logging);
+            (FlashPart[] flashParts, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(InputStream,
+                                                                                                    BlockSize,
+                                                                                                    InputForStore.ExcludedPartitionNames,
+                                                                                                    SectorSize,
+                                                                                                    Logging);
 
             Logging.Log("Generating Block Payloads...");
-            KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts, BlockSize, InputForStore.MaximumNumberOfBlankBlocksAllowed, Logging);
+            KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts,
+                                                                                                                   BlockSize,
+                                                                                                                   InputForStore.MaximumNumberOfBlankBlocksAllowed,
+                                                                                                                   Logging);
 
             BlockPayloads = BlockPayloadsGenerator.GetGPTPayloads(BlockPayloads, InputStream, BlockSize, InputForStore.IsFixedDiskLength);
 
