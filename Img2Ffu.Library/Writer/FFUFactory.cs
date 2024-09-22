@@ -86,6 +86,18 @@ namespace Img2Ffu.Writer
                 return;
             }
 
+            if (!InputsForStores.Any())
+            {
+                Logging.Log("At least one store must be specified in order to generate a FFU file!", ILoggingLevel.Error);
+                return;
+            }
+
+            if (InputsForStores.Count() > 1 && FlashUpdateVersion != FlashUpdateVersion.V2)
+            {
+                Logging.Log("Multiple stores is only supported with Flash Update Version 2!", ILoggingLevel.Error);
+                return;
+            }
+
             Logging.Log($"Destination image: {FFUFile}");
             Logging.Log($"Platform IDs: {string.Join("\nPlatform IDs: ", PlatformIDs)}");
             Logging.Log($"Sector Size: {SectorSize}");
