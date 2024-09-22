@@ -91,7 +91,7 @@ namespace Img2Ffu.Writer
             VirtualDisk? InputDisk
         ) GenerateStore(
             InputForStore InputForStore,
-            string[] PlatformIDs,
+            IEnumerable<string> PlatformIDs,
             uint SectorSize,
             uint BlockSize,
             FlashUpdateVersion FlashUpdateVersion,
@@ -125,7 +125,7 @@ namespace Img2Ffu.Writer
             {
                 WriteDescriptorCount = (uint)BlockPayloads.LongLength,
                 WriteDescriptorLength = (uint)WriteDescriptorBuffer.Length,
-                PlatformIds = PlatformIDs,
+                PlatformIds = PlatformIDs.ToArray(),
                 BlockSize = BlockSize,
                 NumberOfStores = NumberOfStores,
                 StoreIndex = StoreIndex,

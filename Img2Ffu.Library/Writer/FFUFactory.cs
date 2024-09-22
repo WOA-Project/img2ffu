@@ -65,7 +65,7 @@ namespace Img2Ffu.Writer
         public static void GenerateFFU(
             IEnumerable<InputForStore> InputsForStores,
             string FFUFile,
-            string[] PlatformIDs,
+            IEnumerable<string> PlatformIDs,
             uint SectorSize,
             uint BlockSize,
             string AntiTheftVersion,
@@ -111,10 +111,10 @@ namespace Img2Ffu.Writer
             FullFlashManifest FullFlash = new()
             {
                 OSVersion = OperatingSystemVersion,
-                DevicePlatformId3 = PlatformIDs.Count() > 3 ? PlatformIDs[3] : "",
-                DevicePlatformId2 = PlatformIDs.Count() > 2 ? PlatformIDs[2] : "",
-                DevicePlatformId1 = PlatformIDs.Count() > 1 ? PlatformIDs[1] : "",
-                DevicePlatformId0 = PlatformIDs[0],
+                DevicePlatformId3 = PlatformIDs.Count() > 3 ? PlatformIDs.ElementAt(3) : "",
+                DevicePlatformId2 = PlatformIDs.Count() > 2 ? PlatformIDs.ElementAt(2) : "",
+                DevicePlatformId1 = PlatformIDs.Count() > 1 ? PlatformIDs.ElementAt(1) : "",
+                DevicePlatformId0 = PlatformIDs.ElementAt(0),
                 AntiTheftVersion = AntiTheftVersion
             };
 

@@ -20,61 +20,51 @@
  * SOFTWARE.
  */
 using CommandLine;
+using Img2Ffu.Writer.Data;
+using System.Collections.Generic;
 
 namespace Img2Ffu
 {
-    internal class Options
+    internal class Options : StoreInputOptions
     {
-        [Option('i', "img-file", HelpText = @"A path to the img file to convert *OR* a PhysicalDisk path. i.e. \\.\PhysicalDrive1", Required = true)]
-        public required string InputFile
-        {
-            get; set;
-        }
-
         [Option('f', "ffu-file", HelpText = "A path to the FFU file to output", Required = true)]
         public required string OutputFFUFile
         {
             get; set;
         }
 
-        [Option('e', "excluded-file", HelpText = "A path to the file with all partitions to exclude", Required = false, Default = ".\\provisioning-partitions.txt")]
-        public required string ExcludedPartitionNamesFilePath
+        [Option('p', "plat-id", HelpText = "Platform ID to use", Separator = ';', Required = true)]
+        public required IEnumerable<string> PlatformIDs
         {
             get; set;
         }
 
-        [Option('p', "plat-id", HelpText = "Platform ID to use", Required = true)]
-        public required string PlatformID
-        {
-            get; set;
-        }
-
-        [Option('a', "anti-theft-version", Required = false, HelpText = "Anti theft version.", Default = "1.1")]
+        [Option('a', "anti-theft-version", HelpText = "Anti theft version.", Default = "1.1", Required = false)]
         public required string AntiTheftVersion
         {
             get; set;
         }
 
-        [Option('o', "os-version", Required = false, HelpText = "Operating system version.", Default = "10.0.11111.0")]
+        [Option('o', "os-version", HelpText = "Operating system version.", Default = "10.0.11111.0", Required = false)]
         public required string OperatingSystemVersion
         {
             get; set;
         }
 
-        [Option('c', "block-size", Required = false, HelpText = "Block size to use for the FFU file", Default = 0x20000u)]
+        [Option('c', "block-size", HelpText = "Block size to use for the FFU file", Default = 0x20000u, Required = false)]
         public uint BlockSize
         {
             get; set;
         }
 
-        [Option('s', "sector-size", Required = false, HelpText = "Sector size to use for the FFU file", Default = 0x200u)]
+        [Option('s', "sector-size", HelpText = "Sector size to use for the FFU file", Default = 0x200u, Required = false)]
         public uint SectorSize
         {
             get; set;
         }
 
-        [Option('b', "blanksectorbuffer-size", Required = false, HelpText = "Buffer size for the upper maximum allowed limit of blank sectors", Default = 100u)]
-        public uint MaximumNumberOfBlankBlocksAllowed
+        [Option('v', "full-flash-update-version", HelpText = "Version of the FFU file format to use, can be either V1 or V2", Default = FlashUpdateVersion.V1, Required = false)]
+        public FlashUpdateVersion FlashUpdateVersion
         {
             get; set;
         }
