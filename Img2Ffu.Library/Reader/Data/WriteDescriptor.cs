@@ -25,7 +25,7 @@ using System.Text;
 
 namespace Img2Ffu.Reader.Data
 {
-    internal class WriteDescriptor
+    public class WriteDescriptor
     {
         public BlockDataEntry BlockDataEntry;
         public uint DataSize;

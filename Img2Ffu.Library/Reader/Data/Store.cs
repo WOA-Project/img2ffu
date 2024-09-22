@@ -25,7 +25,7 @@ using System.Text;
 
 namespace Img2Ffu.Reader.Data
 {
-    internal class Store
+    public class Store
     {
         public StoreHeader StoreHeader;
         public uint CompressionAlgorithm;

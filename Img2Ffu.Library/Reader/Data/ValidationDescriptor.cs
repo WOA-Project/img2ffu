@@ -23,7 +23,7 @@ using Img2Ffu.Reader.Structs;
 
 namespace Img2Ffu.Reader.Data
 {
-    internal class ValidationDescriptor
+    public class ValidationDescriptor
     {
         public ValidationEntry ValidationEntry;
         public byte[] ValidationBytes;
