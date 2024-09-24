@@ -200,9 +200,7 @@ namespace Img2Ffu
                         return;
                     }
 
-                    FlashUpdateVersion flashUpdateVersion = FlashUpdateVersion.V2;
-
-                    Logging.Log("Full Flash Update Version Specified: " + flashUpdateVersion);
+                    Logging.Log("Full Flash Update Version Specified: " + o.FlashUpdateVersion);
                     Logging.Log("Number of Stores Specified: " + inputFiles.Count());
                     Logging.Log("");
 
@@ -239,7 +237,7 @@ namespace Img2Ffu
                         o.BlockSize,
                         o.AntiTheftVersion,
                         o.OperatingSystemVersion,
-                        flashUpdateVersion,
+                        o.FlashUpdateVersion,
                         deviceTargetingInformations,
                         logging);
                 }
