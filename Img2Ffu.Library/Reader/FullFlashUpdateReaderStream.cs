@@ -69,7 +69,12 @@ namespace Img2Ffu.Reader
                     SectorSize = signedImage.ChunkSize;
                 }
 
-                length = (long)((ulong)MinSectorCount * (ulong)SectorSize);
+                long newLength = (long)((ulong)MinSectorCount * (ulong)SectorSize);
+
+                if (newLength > length)
+                {
+                    length = newLength;
+                }
             }
             catch { }
         }
