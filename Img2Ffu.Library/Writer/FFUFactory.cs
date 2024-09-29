@@ -119,11 +119,11 @@ namespace Img2Ffu.Writer
             };
 
             List<(
-                uint MinSectorCount, 
-                List<GPT.Partition> partitions, 
-                byte[] StoreHeaderBuffer, 
-                byte[] WriteDescriptorBuffer, 
-                KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, 
+                uint MinSectorCount,
+                List<GPT.Partition> partitions,
+                byte[] StoreHeaderBuffer,
+                byte[] WriteDescriptorBuffer,
+                KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads,
                 VirtualDisk? InputDisk
             )> StoreGenerationParameters = [];
 
@@ -140,11 +140,11 @@ namespace Img2Ffu.Writer
                 Logging.Log($"[Store #{StoreIndex}] Is Fixed Disk Length: {inputForStore.IsFixedDiskLength}");
 
                 (
-                    uint MinSectorCount, 
-                    List<GPT.Partition> partitions, 
-                    byte[] StoreHeaderBuffer, 
-                    byte[] WriteDescriptorBuffer, 
-                    KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, 
+                    uint MinSectorCount,
+                    List<GPT.Partition> partitions,
+                    byte[] StoreHeaderBuffer,
+                    byte[] WriteDescriptorBuffer,
+                    KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads,
                     VirtualDisk? InputDisk
                 ) GeneratedStoreParameters = StoreFactory.GenerateStore(
                     inputForStore,
@@ -219,11 +219,11 @@ namespace Img2Ffu.Writer
             ChunkUtils.RoundUpToChunks(FFUMetadataHeaderStream, BlockSize);
 
             foreach ((
-                uint _, 
-                List<GPT.Partition> _, 
-                byte[] StoreHeaderBuffer, 
-                byte[] WriteDescriptorBuffer, 
-                KeyValuePair<ByteArrayKey, BlockPayload>[] _, 
+                uint _,
+                List<GPT.Partition> _,
+                byte[] StoreHeaderBuffer,
+                byte[] WriteDescriptorBuffer,
+                KeyValuePair<ByteArrayKey, BlockPayload>[] _,
                 VirtualDisk? _
             ) in StoreGenerationParameters)
             {

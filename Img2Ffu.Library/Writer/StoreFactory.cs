@@ -83,11 +83,11 @@ namespace Img2Ffu.Writer
         }
 
         internal static (
-            uint MinSectorCount, 
-            List<GPT.Partition> partitions, 
-            byte[] StoreHeaderBuffer, 
-            byte[] WriteDescriptorBuffer, 
-            KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads, 
+            uint MinSectorCount,
+            List<GPT.Partition> partitions,
+            byte[] StoreHeaderBuffer,
+            byte[] WriteDescriptorBuffer,
+            KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads,
             VirtualDisk? InputDisk
         ) GenerateStore(
             InputForStore InputForStore,
