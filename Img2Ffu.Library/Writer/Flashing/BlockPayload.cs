@@ -29,14 +29,10 @@ namespace Img2Ffu.Writer.Flashing
         public Stream Stream = Stream;
         public ulong FlashPartStreamLocation = StreamLocation;
 
-        internal byte[] ReadBlock(ulong BlockSize)
+        internal void ReadBlock(Span<byte> BlockBuffer)
         {
             _ = Stream.Seek((long)FlashPartStreamLocation, SeekOrigin.Begin);
-
-            byte[] BlockBuffer = new byte[BlockSize];
-            _ = Stream.Read(BlockBuffer, 0, (int)BlockSize);
-
-            return BlockBuffer;
+            _ = Stream.Read(BlockBuffer);
         }
     }
 }

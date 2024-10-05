@@ -89,7 +89,7 @@ namespace Img2Ffu.Writer.Data
             get; set;
         }
 
-        public byte[] GetResultingBuffer(FlashUpdateVersion storeHeaderVersion, FlashUpdateType storeHeaderUpdateType, CompressionAlgorithm storeHeaderCompressionAlgorithm)
+        public Memory<byte> GetResultingBuffer(FlashUpdateVersion storeHeaderVersion, FlashUpdateType storeHeaderUpdateType, CompressionAlgorithm storeHeaderCompressionAlgorithm)
         {
             switch (storeHeaderVersion)
             {
@@ -183,9 +183,9 @@ namespace Img2Ffu.Writer.Data
                     break;
             }
 
-            byte[] StoreHeaderBuffer = new byte[StoreHeaderStream.Length];
+            Memory<byte> StoreHeaderBuffer = new byte[StoreHeaderStream.Length];
             _ = StoreHeaderStream.Seek(0, SeekOrigin.Begin);
-            StoreHeaderStream.ReadExactly(StoreHeaderBuffer, 0, StoreHeaderBuffer.Length);
+            StoreHeaderStream.ReadExactly(StoreHeaderBuffer.Span);
 
             return StoreHeaderBuffer;
         }

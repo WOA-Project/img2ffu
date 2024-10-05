@@ -77,7 +77,7 @@ namespace Img2Ffu.Reader.Data
         {
             List<byte> bytes = [];
 
-            BlockDataEntry.LocationCount = (uint)DiskLocations.Count;
+            BlockDataEntry.LocationCount = (uint)DiskLocations.LongCount();
 
             bytes.AddRange(BlockDataEntry.GetBytes());
 

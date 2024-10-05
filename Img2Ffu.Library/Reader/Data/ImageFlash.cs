@@ -53,8 +53,8 @@ namespace Img2Ffu.Reader.Data
 
             if (ImageHeader.Size == 28u)
             {
-                byte[] DeviceTargetingInfoCountBuffer = new byte[4];
-                _ = stream.Read(DeviceTargetingInfoCountBuffer, 0, 4);
+                Span<byte> DeviceTargetingInfoCountBuffer = new byte[4];
+                _ = stream.Read(DeviceTargetingInfoCountBuffer);
 
                 DeviceTargetingInfoCount = BitConverter.ToUInt32(DeviceTargetingInfoCountBuffer);
             }
@@ -62,8 +62,8 @@ namespace Img2Ffu.Reader.Data
             // Account for FFUs with Device Target Info Count and Device Target Infos and potentially other things...
             _ = stream.Seek(InitialStreamPosition + ImageHeader.Size, SeekOrigin.Begin);
 
-            byte[] manifestDataBuffer = new byte[ImageHeader.ManifestLength];
-            _ = stream.Read(manifestDataBuffer, 0, (int)ImageHeader.ManifestLength);
+            Span<byte> manifestDataBuffer = new byte[ImageHeader.ManifestLength];
+            _ = stream.Read(manifestDataBuffer);
             ASCIIEncoding asciiEncoding = new();
             ManifestData = asciiEncoding.GetString(manifestDataBuffer);
 
@@ -77,7 +77,7 @@ namespace Img2Ffu.Reader.Data
             {
                 long paddingSize = (ImageHeader.ChunkSize * 1024) - (Position % (ImageHeader.ChunkSize * 1024));
                 Padding = new byte[paddingSize];
-                _ = stream.Read(Padding, 0, (int)paddingSize);
+                _ = stream.Read(Padding);
             }
 
             Store store = new(stream);
@@ -102,18 +102,18 @@ namespace Img2Ffu.Reader.Data
             return imageBlockCount + storeBlockCount;
         }
 
-        public byte[] GetImageBlock(Stream Stream, ulong dataBlockIndex)
+        public Span<byte> GetImageBlock(Stream Stream, ulong dataBlockIndex)
         {
             ulong imageBlockCount = (ulong)(DataBlocksPosition - InitialStreamPosition) / (ImageHeader.ChunkSize * 1024);
 
             // The data block is within the image headers
             if (dataBlockIndex < imageBlockCount)
             {
-                byte[] dataBlock = new byte[(ImageHeader.ChunkSize * 1024)];
+                Span<byte> dataBlock = new byte[(ImageHeader.ChunkSize * 1024)];
                 ulong dataBlockPosition = (ulong)InitialStreamPosition + (dataBlockIndex * (ImageHeader.ChunkSize * 1024));
 
                 _ = Stream.Seek((long)dataBlockPosition, SeekOrigin.Begin);
-                _ = Stream.Read(dataBlock, 0, dataBlock.Length);
+                _ = Stream.Read(dataBlock);
 
                 return dataBlock;
             }
@@ -135,10 +135,10 @@ namespace Img2Ffu.Reader.Data
             return dataBlockCount;
         }
 
-        public byte[] GetDataBlock(Stream Stream, ulong dataBlockIndex)
+        public Span<byte> GetDataBlock(Stream Stream, ulong dataBlockIndex)
         {
             ulong dataBlockIndexOffset = 0;
-            for (ulong storeIndex = 0; storeIndex < (ulong)Stores.Count; storeIndex++)
+            for (ulong storeIndex = 0; storeIndex < (ulong)Stores.LongCount(); storeIndex++)
             {
                 ulong storeDataBlockCount = GetStoreDataBlockCount(storeIndex);
                 if (dataBlockIndexOffset + storeDataBlockCount > dataBlockIndex)
@@ -200,7 +200,7 @@ namespace Img2Ffu.Reader.Data
                 byte[] compressedDataBlock = new byte[compressedDataBlockSize];
 
                 _ = Stream.Seek((long)dataBlockPosition, SeekOrigin.Begin);
-                _ = Stream.Read(compressedDataBlock, 0, compressedDataBlock.Length);
+                _ = Stream.Read(compressedDataBlock);
 
                 switch ((CompressionAlgorithm)currentStore.CompressionAlgorithm)
                 {
@@ -231,7 +231,7 @@ namespace Img2Ffu.Reader.Data
                 dataBlockPosition += dataBlockIndex * currentStore.StoreHeader.BlockSize;
 
                 _ = Stream.Seek((long)dataBlockPosition, SeekOrigin.Begin);
-                _ = Stream.Read(dataBlock, 0, dataBlock.Length);
+                _ = Stream.Read(dataBlock);
             }
 
             return dataBlock;

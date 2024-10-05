@@ -53,7 +53,7 @@ namespace Img2Ffu.Writer.Data
 
         public string BaseboardProduct { get; } = baseboardProduct;
 
-        internal byte[] GetResultingBuffer()
+        internal Span<byte> GetResultingBuffer()
         {
             using MemoryStream DeviceTargetInfoStream = new();
             using BinaryWriter binaryWriter = new(DeviceTargetInfoStream);
@@ -82,11 +82,12 @@ namespace Img2Ffu.Writer.Data
             binaryWriter.Write(Encoding.ASCII.GetBytes(BaseboardManufacturer));
             binaryWriter.Write(Encoding.ASCII.GetBytes(BaseboardProduct));
 
-            byte[] DeviceTargetInfoBuffer = new byte[DeviceTargetInfoStream.Length];
+            Memory<byte> DeviceTargetInfoBuffer = new byte[DeviceTargetInfoStream.Length];
+            Span<byte> span = DeviceTargetInfoBuffer.Span;
             _ = DeviceTargetInfoStream.Seek(0, SeekOrigin.Begin);
-            DeviceTargetInfoStream.ReadExactly(DeviceTargetInfoBuffer, 0, DeviceTargetInfoBuffer.Length);
+            DeviceTargetInfoStream.ReadExactly(span);
 
-            return DeviceTargetInfoBuffer;
+            return span;
         }
     }
 }

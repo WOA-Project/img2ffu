@@ -39,14 +39,14 @@ namespace Img2Ffu.Writer.Flashing
             return _hashCode;
         }
 
-        private static int GetHashCode([NotNull] byte[] bytes)
+        private static int GetHashCode([NotNull] Memory<byte> bytes)
         {
             unchecked
             {
                 int hash = 17;
                 for (int i = 0; i < bytes.Length; i++)
                 {
-                    hash = (hash * 23) + bytes[i];
+                    hash = (hash * 23) + bytes.Span[i];
                 }
                 return hash;
             }

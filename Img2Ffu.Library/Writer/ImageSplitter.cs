@@ -28,7 +28,7 @@ namespace Img2Ffu.Writer
         private static GPT GetGPT(Stream stream, uint BlockSize, uint sectorSize, ILogging Logging)
         {
             byte[] GPTBuffer = new byte[BlockSize];
-            _ = stream.Read(GPTBuffer, 0, (int)BlockSize);
+            _ = stream.Read(GPTBuffer);
 
             uint requiredGPTBufferSize = GetGPTSize(GPTBuffer, sectorSize);
             if (BlockSize < requiredGPTBufferSize)

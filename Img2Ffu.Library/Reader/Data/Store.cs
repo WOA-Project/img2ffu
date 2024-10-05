@@ -65,8 +65,8 @@ namespace Img2Ffu.Reader.Data
                 case FFUVersion.V2:
                     {
                         StoreHeaderV2 = stream.ReadStructure<StoreHeaderV2>();
-                        byte[] stringBytes = new byte[StoreHeaderV2.DevicePathLength * 2];
-                        _ = stream.Read(stringBytes, 0, stringBytes.Length);
+                        Span<byte> stringBytes = new byte[StoreHeaderV2.DevicePathLength * 2];
+                        _ = stream.Read(stringBytes);
                         UnicodeEncoding unicodeEncoding = new();
                         DevicePath = unicodeEncoding.GetString(stringBytes);
                         break;
@@ -94,7 +94,7 @@ namespace Img2Ffu.Reader.Data
             {
                 long paddingSize = StoreHeader.BlockSize - (Position % StoreHeader.BlockSize);
                 Padding = new byte[paddingSize];
-                _ = stream.Read(Padding, 0, (int)paddingSize);
+                _ = stream.Read(Padding);
             }
         }
 

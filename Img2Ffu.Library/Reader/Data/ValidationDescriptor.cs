@@ -33,7 +33,7 @@ namespace Img2Ffu.Reader.Data
             ValidationEntry = stream.ReadStructure<ValidationEntry>();
 
             ValidationBytes = new byte[ValidationEntry.dwByteCount];
-            _ = stream.Read(ValidationBytes, 0, (int)ValidationEntry.dwByteCount);
+            _ = stream.Read(ValidationBytes);
         }
 
         public ValidationDescriptor(ValidationEntry validationEntry, byte[] validationBytes)

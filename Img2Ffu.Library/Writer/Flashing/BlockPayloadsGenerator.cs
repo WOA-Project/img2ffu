@@ -62,7 +62,7 @@ namespace Img2Ffu.Writer.Flashing
 
             byte[] PrimaryGPTBuffer = new byte[(int)BlockSize];
             _ = stream.Seek(0, SeekOrigin.Begin);
-            _ = stream.Read(PrimaryGPTBuffer, 0, (int)BlockSize);
+            _ = stream.Read(PrimaryGPTBuffer);
 
             MemoryStream primaryGPTStream = new(PrimaryGPTBuffer);
 
@@ -100,7 +100,7 @@ namespace Img2Ffu.Writer.Flashing
                 ulong endGPTChunkStartLocation = (ulong)stream.Length - BlockSize;
                 byte[] SecondaryGPTBuffer = new byte[(int)BlockSize];
                 _ = stream.Seek((long)endGPTChunkStartLocation, SeekOrigin.Begin);
-                _ = stream.Read(SecondaryGPTBuffer, 0, (int)BlockSize);
+                _ = stream.Read(SecondaryGPTBuffer);
 
                 MemoryStream secondaryGPTStream = new(SecondaryGPTBuffer);
 
@@ -148,7 +148,7 @@ namespace Img2Ffu.Writer.Flashing
                 ulong endGPTChunkStartLocation = (ulong)stream.Length - BlockSize;
                 byte[] SecondaryGPTBuffer = new byte[(int)BlockSize];
                 _ = stream.Seek((long)endGPTChunkStartLocation, SeekOrigin.Begin);
-                _ = stream.Read(SecondaryGPTBuffer, 0, (int)BlockSize);
+                _ = stream.Read(SecondaryGPTBuffer);
 
                 MemoryStream secondaryGPTStream = new(SecondaryGPTBuffer);
 
@@ -206,6 +206,9 @@ namespace Img2Ffu.Writer.Flashing
 
             List<KeyValuePair<ByteArrayKey, BlockPayload>> blankBlocks = [];
 
+            Memory<byte> blockBuffer = new byte[BlockSize];
+            Span<byte> span = blockBuffer.Span;
+
             foreach (FlashPart flashPart in flashParts)
             {
                 _ = flashPart.Stream.Seek(0, SeekOrigin.Begin);
@@ -213,10 +216,9 @@ namespace Img2Ffu.Writer.Flashing
 
                 for (uint blockIndex = 0; blockIndex < totalBlockCount; blockIndex++)
                 {
-                    byte[] blockBuffer = new byte[BlockSize];
                     long streamPosition = flashPart.Stream.Position;
-                    _ = flashPart.Stream.Read(blockBuffer, 0, (int)BlockSize);
-                    byte[] blockHash = SHA256.HashData(blockBuffer);
+                    _ = flashPart.Stream.Read(span);
+                    byte[] blockHash = SHA256.HashData(span);
 
                     if (!StructuralComparisons.StructuralEqualityComparer.Equals(EMPTY_BLOCK_HASH, blockHash))
                     {

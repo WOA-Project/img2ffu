@@ -30,7 +30,7 @@ namespace Img2Ffu.Writer.Data
             get; set;
         }
 
-        public byte[] GetResultingBuffer(uint BlockSize, bool HasDeviceTargetInfo, uint DeviceTargetInfosCount)
+        public Span<byte> GetResultingBuffer(uint BlockSize, bool HasDeviceTargetInfo, uint DeviceTargetInfosCount)
         {
             using MemoryStream ImageHeaderStream = new();
             using BinaryWriter binaryWriter = new(ImageHeaderStream);
@@ -45,11 +45,12 @@ namespace Img2Ffu.Writer.Data
                 binaryWriter.Write(DeviceTargetInfosCount); // Device Target Infos Count
             }
 
-            byte[] ImageHeaderBuffer = new byte[ImageHeaderStream.Length];
+            Memory<byte> ImageHeaderBuffer = new byte[ImageHeaderStream.Length];
+            Span<byte> span = ImageHeaderBuffer.Span;
             _ = ImageHeaderStream.Seek(0, SeekOrigin.Begin);
-            ImageHeaderStream.ReadExactly(ImageHeaderBuffer, 0, ImageHeaderBuffer.Length);
+            ImageHeaderStream.ReadExactly(span);
 
-            return ImageHeaderBuffer;
+            return span;
         }
     }
 }

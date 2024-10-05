@@ -79,11 +79,11 @@ namespace Img2Ffu.Reader
             catch { }
         }
 
-        public static int GetStoreCount(string FFUFilePath)
+        public static ulong GetStoreCount(string FFUFilePath)
         {
             using FileStream ffuStream = File.Open(FFUFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             SignedImage ffuFile = new(ffuStream);
-            return ffuFile.Image.Stores.Count;
+            return (ulong)ffuFile.Image.Stores.LongCount();
         }
 
         private static (int minSectorCount, int minSectorSize)[] ExtractImageManifestStoreInformation(SignedImage ffuFile)
@@ -146,7 +146,7 @@ namespace Img2Ffu.Reader
             long blockMaxStart = 0;
             long blockMaxEnd = 0;
 
-            for (int i = 0; i < store.WriteDescriptors.Count; i++)
+            for (int i = 0; i < store.WriteDescriptors.LongCount(); i++)
             {
                 WriteDescriptor writeDescriptor = store.WriteDescriptors[i];
                 foreach (DiskLocation diskLocation in writeDescriptor.DiskLocations)
@@ -354,7 +354,7 @@ namespace Img2Ffu.Reader
             for (int i = 0; i < store.WriteDescriptors.Count; i++)
             {
                 WriteDescriptor writeDescriptor = store.WriteDescriptors[i];
-                totalBytes += (ulong)writeDescriptor.DiskLocations.Count;
+                totalBytes += (ulong)writeDescriptor.DiskLocations.LongCount();
             }
 
             totalBytes *= (ulong)blockSize * 2u;
@@ -389,7 +389,7 @@ namespace Img2Ffu.Reader
 
                     _ = DestinationStream.Seek(OriginalDestinationStreamPosition + virtualPosition, SeekOrigin.Begin);
 
-                    byte[] buffer = image.GetStoreDataBlock(Stream, storeIndex, (ulong)physicalDiskBlockNumber);
+                    Span<byte> buffer = image.GetStoreDataBlock(Stream, storeIndex, (ulong)physicalDiskBlockNumber);
                     currentWrittenBytes += (ulong)blockSize;
                     ProgressCallBack?.Invoke(currentWrittenBytes, totalBytes);
 

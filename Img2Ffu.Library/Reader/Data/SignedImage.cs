@@ -59,10 +59,10 @@ namespace Img2Ffu.Reader.Data
             }
 
             Catalog = new byte[SecurityHeader.CatalogSize];
-            _ = stream.Read(Catalog, 0, (int)SecurityHeader.CatalogSize);
+            _ = stream.Read(Catalog);
 
             TableOfHashes = new byte[SecurityHeader.HashTableSize];
-            _ = stream.Read(TableOfHashes, 0, (int)SecurityHeader.HashTableSize);
+            _ = stream.Read(TableOfHashes);
 
             long Position = stream.Position;
             uint sizeOfBlock = SecurityHeader.ChunkSizeInKB * 1024;
@@ -70,7 +70,7 @@ namespace Img2Ffu.Reader.Data
             {
                 long paddingSize = sizeOfBlock - (Position % sizeOfBlock);
                 Padding = new byte[paddingSize];
-                _ = stream.Read(Padding, 0, (int)paddingSize);
+                _ = stream.Read(Padding);
             }
 
             try
@@ -114,7 +114,7 @@ namespace Img2Ffu.Reader.Data
 
                 if (SecurityHeader.AlgorithmId == 0x0000800c) // SHA256 Algorithm ID
                 {
-                    byte[] block = Image.GetImageBlock(Stream, i);
+                    Span<byte> block = Image.GetImageBlock(Stream, i);
                     byte[] hash = SHA256.HashData(block);
                     byte[] hashTableHash = BlockHashes.ElementAt((int)i);
 

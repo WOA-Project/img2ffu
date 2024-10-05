@@ -32,7 +32,7 @@ namespace Img2Ffu.Writer.Data
         public uint CatalogSize;
         public uint HashTableSize;
 
-        public byte[] GetResultingBuffer(uint BlockSize)
+        public Span<byte> GetResultingBuffer(uint BlockSize)
         {
             using MemoryStream SecurityHeaderStream = new();
             using BinaryWriter binaryWriter = new(SecurityHeaderStream);
@@ -46,11 +46,12 @@ namespace Img2Ffu.Writer.Data
             binaryWriter.Write(CatalogSize);
             binaryWriter.Write(HashTableSize);
 
-            byte[] SecurityHeaderBuffer = new byte[SecurityHeaderStream.Length];
+            Memory<byte> SecurityHeaderBuffer = new byte[SecurityHeaderStream.Length];
+            Span<byte> span = SecurityHeaderBuffer.Span;
             _ = SecurityHeaderStream.Seek(0, SeekOrigin.Begin);
-            SecurityHeaderStream.ReadExactly(SecurityHeaderBuffer, 0, SecurityHeaderBuffer.Length);
+            SecurityHeaderStream.ReadExactly(span);
 
-            return SecurityHeaderBuffer;
+            return span;
         }
     }
 }

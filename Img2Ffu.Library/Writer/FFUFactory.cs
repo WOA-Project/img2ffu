@@ -30,7 +30,7 @@ namespace Img2Ffu.Writer
 {
     public static class FFUFactory
     {
-        private static byte[] GenerateHashTable(
+        private static Span<byte> GenerateHashTable(
             MemoryStream FFUMetadataHeaderTempFileStream,
             IEnumerable<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads,
             uint BlockSize)
@@ -40,26 +40,29 @@ namespace Img2Ffu.Writer
             using MemoryStream HashTableStream = new();
             using BinaryWriter binaryWriter = new(HashTableStream);
 
+            Memory<byte> buffer = new byte[BlockSize];
+            Span<byte> bufferSpan = buffer.Span;
+
             for (int i = 0; i < FFUMetadataHeaderTempFileStream.Length / BlockSize; i++)
             {
-                byte[] buffer = new byte[BlockSize];
-                _ = FFUMetadataHeaderTempFileStream.Read(buffer, 0, (int)BlockSize);
+                _ = FFUMetadataHeaderTempFileStream.Read(bufferSpan);
 
-                byte[] hash = SHA256.HashData(buffer);
-                binaryWriter.Write(hash, 0, hash.Length);
+                Span<byte> hash = SHA256.HashData(bufferSpan);
+                binaryWriter.Write(hash);
             }
 
             foreach (KeyValuePair<ByteArrayKey, BlockPayload> payload in BlockPayloads)
             {
-                binaryWriter.Write(payload.Key.Bytes, 0, payload.Key.Bytes.Length);
+                binaryWriter.Write(payload.Key.Bytes);
             }
 
             _ = HashTableStream.Seek(0, SeekOrigin.Begin);
 
-            byte[] HashTableBuffer = new byte[HashTableStream.Length];
-            HashTableStream.ReadExactly(HashTableBuffer, 0, HashTableBuffer.Length);
+            Memory<byte> HashTableBuffer = new byte[HashTableStream.Length];
+            Span<byte> span = HashTableBuffer.Span;
+            HashTableStream.ReadExactly(span);
 
-            return HashTableBuffer;
+            return span;
         }
 
         public static void GenerateFFU(
@@ -121,8 +124,8 @@ namespace Img2Ffu.Writer
             List<(
                 uint MinSectorCount,
                 List<GPT.Partition> partitions,
-                byte[] StoreHeaderBuffer,
-                byte[] WriteDescriptorBuffer,
+                Memory<byte> StoreHeaderBuffer,
+                Memory<byte> WriteDescriptorBuffer,
                 KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads,
                 VirtualDisk? InputDisk
             )> StoreGenerationParameters = [];
@@ -142,8 +145,8 @@ namespace Img2Ffu.Writer
                 (
                     uint MinSectorCount,
                     List<GPT.Partition> partitions,
-                    byte[] StoreHeaderBuffer,
-                    byte[] WriteDescriptorBuffer,
+                    Memory<byte> StoreHeaderBuffer,
+                    Memory<byte> WriteDescriptorBuffer,
                     KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads,
                     VirtualDisk? InputDisk
                 ) GeneratedStoreParameters = StoreFactory.GenerateStore(
@@ -175,7 +178,7 @@ namespace Img2Ffu.Writer
 
             Logging.Log("Generating image manifest...");
             string ImageManifest = ManifestIni.BuildUpManifest(FullFlash, Stores);
-            byte[] ManifestBuffer = Encoding.ASCII.GetBytes(ImageManifest);
+            Span<byte> ManifestBuffer = Encoding.ASCII.GetBytes(ImageManifest);
 
             Logging.Log("Generating image header...");
             ImageHeader ImageHeader = new()
@@ -183,7 +186,7 @@ namespace Img2Ffu.Writer
                 ManifestLength = (uint)ManifestBuffer.Length
             };
 
-            byte[] ImageHeaderBuffer = ImageHeader.GetResultingBuffer(BlockSize, deviceTargetingInformationArray.Count != 0, (uint)deviceTargetingInformationArray.Count);
+            Span<byte> ImageHeaderBuffer = ImageHeader.GetResultingBuffer(BlockSize, deviceTargetingInformationArray.Count != 0, (uint)deviceTargetingInformationArray.Count);
 
             using MemoryStream FFUMetadataHeaderStream = new();
 
@@ -191,13 +194,13 @@ namespace Img2Ffu.Writer
             // Image Header
             //
             Logging.Log("Writing Image Header...");
-            FFUMetadataHeaderStream.Write(ImageHeaderBuffer, 0, ImageHeaderBuffer.Length);
+            FFUMetadataHeaderStream.Write(ImageHeaderBuffer);
 
             //
             // Image Manifest
             //
             Logging.Log("Writing Image Manifest...");
-            FFUMetadataHeaderStream.Write(ManifestBuffer, 0, ManifestBuffer.Length);
+            FFUMetadataHeaderStream.Write(ManifestBuffer);
 
             if (deviceTargetingInformationArray.Count != 0)
             {
@@ -207,8 +210,8 @@ namespace Img2Ffu.Writer
                 Logging.Log("Writing Device Target Information Array...");
                 foreach (DeviceTargetInfo deviceTargetInfo in deviceTargetingInformationArray)
                 {
-                    byte[] deviceTargetInfoBuffer = deviceTargetInfo.GetResultingBuffer();
-                    FFUMetadataHeaderStream.Write(deviceTargetInfoBuffer, 0, deviceTargetInfoBuffer.Length);
+                    Span<byte> deviceTargetInfoBuffer = deviceTargetInfo.GetResultingBuffer();
+                    FFUMetadataHeaderStream.Write(deviceTargetInfoBuffer);
                 }
             }
 
@@ -221,8 +224,8 @@ namespace Img2Ffu.Writer
             foreach ((
                 uint _,
                 List<GPT.Partition> _,
-                byte[] StoreHeaderBuffer,
-                byte[] WriteDescriptorBuffer,
+                Memory<byte> StoreHeaderBuffer,
+                Memory<byte> WriteDescriptorBuffer,
                 KeyValuePair<ByteArrayKey, BlockPayload>[] _,
                 VirtualDisk? _
             ) in StoreGenerationParameters)
@@ -231,13 +234,13 @@ namespace Img2Ffu.Writer
                 // Store Header[0]
                 //
                 Logging.Log("Writing Store Header...");
-                FFUMetadataHeaderStream.Write(StoreHeaderBuffer, 0, StoreHeaderBuffer.Length);
+                FFUMetadataHeaderStream.Write(StoreHeaderBuffer.Span);
 
                 //
                 // Write Descriptors[0]
                 //
                 Logging.Log("Writing Write Descriptors...");
-                FFUMetadataHeaderStream.Write(WriteDescriptorBuffer, 0, WriteDescriptorBuffer.Length);
+                FFUMetadataHeaderStream.Write(WriteDescriptorBuffer.Span);
 
                 //
                 // (Block Size) Padding[0]
@@ -247,10 +250,10 @@ namespace Img2Ffu.Writer
             }
 
             Logging.Log("Generating image hash table...");
-            byte[] HashTable = GenerateHashTable(FFUMetadataHeaderStream, BlockPayloads, BlockSize);
+            Span<byte> HashTable = GenerateHashTable(FFUMetadataHeaderStream, BlockPayloads, BlockSize);
 
             Logging.Log("Generating image catalog...");
-            byte[] CatalogBuffer = CatalogFactory.GenerateCatalogFile(HashTable);
+            Span<byte> CatalogBuffer = CatalogFactory.GenerateCatalogFile(HashTable);
 
             Logging.Log("Generating Security Header...");
             SecurityHeader security = new()
@@ -259,15 +262,16 @@ namespace Img2Ffu.Writer
                 CatalogSize = (uint)CatalogBuffer.Length
             };
 
-            byte[] SecurityHeaderBuffer = security.GetResultingBuffer(BlockSize);
+            Span<byte> SecurityHeaderBuffer = security.GetResultingBuffer(BlockSize);
 
             _ = FFUMetadataHeaderStream.Seek(0, SeekOrigin.Begin);
 
-            byte[] FFUMetadataHeaderBuffer = new byte[FFUMetadataHeaderStream.Length];
-            _ = FFUMetadataHeaderStream.Read(FFUMetadataHeaderBuffer, 0, (int)FFUMetadataHeaderStream.Length);
+            Memory<byte> FFUMetadataHeaderBuffer = new byte[FFUMetadataHeaderStream.Length];
+            Span<byte> FFUMetadataHeaderSpan = FFUMetadataHeaderBuffer.Span;
+            _ = FFUMetadataHeaderStream.Read(FFUMetadataHeaderSpan);
 
             Logging.Log("Opening FFU file for writing...");
-            WriteFFUFile(FFUFile, SecurityHeaderBuffer, CatalogBuffer, HashTable, FFUMetadataHeaderBuffer, BlockPayloads, BlockSize, Logging);
+            WriteFFUFile(FFUFile, SecurityHeaderBuffer, CatalogBuffer, HashTable, FFUMetadataHeaderSpan, BlockPayloads, BlockSize, Logging);
 
             Logging.Log("Disposing Resources...");
             StoreGenerationParameters.ForEach(x => x.InputDisk?.Dispose());
@@ -275,10 +279,10 @@ namespace Img2Ffu.Writer
 
         private static void WriteFFUFile(
             string FFUFile,
-            byte[] SecurityHeaderBuffer,
-            byte[] CatalogBuffer,
-            byte[] HashTable,
-            byte[] FFUMetadataHeaderBuffer,
+            Span<byte> SecurityHeaderBuffer,
+            Span<byte> CatalogBuffer,
+            Span<byte> HashTable,
+            Span<byte> FFUMetadataHeaderBuffer,
             IEnumerable<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads,
             uint BlockSize,
             ILogging Logging)
@@ -289,19 +293,19 @@ namespace Img2Ffu.Writer
             // Security Header
             //
             Logging.Log("Writing Security Header...");
-            FFUFileStream.Write(SecurityHeaderBuffer, 0, SecurityHeaderBuffer.Length);
+            FFUFileStream.Write(SecurityHeaderBuffer);
 
             //
             // Security Catalog
             //
             Logging.Log("Writing Security Catalog...");
-            FFUFileStream.Write(CatalogBuffer, 0, CatalogBuffer.Length);
+            FFUFileStream.Write(CatalogBuffer);
 
             //
             // Hash Table
             //
             Logging.Log("Writing Hash Table...");
-            FFUFileStream.Write(HashTable, 0, HashTable.Length);
+            FFUFileStream.Write(HashTable);
 
             //
             // (Block Size) Padding
@@ -318,7 +322,7 @@ namespace Img2Ffu.Writer
             // (Block Size) Padding[0]
             //
             Logging.Log("Writing FFU Metadata Header...");
-            FFUFileStream.Write(FFUMetadataHeaderBuffer, 0, FFUMetadataHeaderBuffer.Length);
+            FFUFileStream.Write(FFUMetadataHeaderBuffer);
 
             //
             // Data Blocks
@@ -328,13 +332,16 @@ namespace Img2Ffu.Writer
             DateTime startTime = DateTime.Now;
             ulong totalBytes = (ulong)BlockPayloads.LongCount() * BlockSize;
 
-            for (ulong CurrentBlockIndex = 0; CurrentBlockIndex < (ulong)BlockPayloads.LongCount(); CurrentBlockIndex++)
+            Memory<byte> BlockBuffer = new byte[BlockSize];
+            Span<byte> span = BlockBuffer.Span;
+
+            ulong CurrentBlockIndex = 0;
+            foreach (KeyValuePair<ByteArrayKey, BlockPayload> BlockPayload in BlockPayloads)
             {
-                BlockPayload BlockPayload = BlockPayloads.ElementAt((int)CurrentBlockIndex).Value;
-                byte[] BlockBuffer = BlockPayload.ReadBlock(BlockSize);
+                BlockPayload.Value.ReadBlock(span);
+                FFUFileStream.Write(span);
 
-                FFUFileStream.Write(BlockBuffer, 0, (int)BlockSize);
-
+                CurrentBlockIndex++;
                 ulong bytesRead = CurrentBlockIndex * BlockSize;
 
                 LoggingHelpers.ShowProgress(totalBytes, bytesRead, bytesRead, startTime, Logging);

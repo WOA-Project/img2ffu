@@ -29,7 +29,7 @@ namespace Img2Ffu.Writer
             if (Size % chunkSize > 0)
             {
                 long padding = (uint)(((Size / chunkSize) + 1) * chunkSize) - Size;
-                stream.Write(new byte[padding], 0, (int)padding);
+                stream.Write(new byte[padding]);
             }
         }
 
@@ -39,7 +39,7 @@ namespace Img2Ffu.Writer
             if (Size % chunkSize > 0)
             {
                 long padding = (uint)(((Size / chunkSize) + 1) * chunkSize) - Size;
-                stream.Write(new byte[padding], 0, (int)padding);
+                stream.Write(new byte[padding]);
             }
         }
     }

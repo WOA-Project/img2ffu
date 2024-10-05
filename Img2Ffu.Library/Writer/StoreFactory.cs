@@ -28,20 +28,20 @@ namespace Img2Ffu.Writer
 {
     internal static class StoreFactory
     {
-        private static byte[] GetWriteDescriptorsBuffer(KeyValuePair<ByteArrayKey, BlockPayload>[] payloads, FlashUpdateVersion storeHeaderVersion)
+        private static Memory<byte> GetWriteDescriptorsBuffer(KeyValuePair<ByteArrayKey, BlockPayload>[] payloads, FlashUpdateVersion storeHeaderVersion)
         {
             using MemoryStream WriteDescriptorsStream = new();
             using BinaryWriter binaryWriter = new(WriteDescriptorsStream);
 
             foreach (KeyValuePair<ByteArrayKey, BlockPayload> payload in payloads)
             {
-                byte[] WriteDescriptorBuffer = payload.Value.WriteDescriptor.GetResultingBuffer(storeHeaderVersion);
+                Span<byte> WriteDescriptorBuffer = payload.Value.WriteDescriptor.GetResultingBuffer(storeHeaderVersion);
                 binaryWriter.Write(WriteDescriptorBuffer);
             }
 
-            byte[] WriteDescriptorsBuffer = new byte[WriteDescriptorsStream.Length];
+            Memory<byte> WriteDescriptorsBuffer = new byte[WriteDescriptorsStream.Length];
             _ = WriteDescriptorsStream.Seek(0, SeekOrigin.Begin);
-            WriteDescriptorsStream.ReadExactly(WriteDescriptorsBuffer, 0, WriteDescriptorsBuffer.Length);
+            WriteDescriptorsStream.ReadExactly(WriteDescriptorsBuffer.Span);
 
             return WriteDescriptorsBuffer;
         }
@@ -85,8 +85,8 @@ namespace Img2Ffu.Writer
         internal static (
             uint MinSectorCount,
             List<GPT.Partition> partitions,
-            byte[] StoreHeaderBuffer,
-            byte[] WriteDescriptorBuffer,
+            Memory<byte> StoreHeaderBuffer,
+            Memory<byte> WriteDescriptorBuffer,
             KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads,
             VirtualDisk? InputDisk
         ) GenerateStore(
@@ -118,7 +118,7 @@ namespace Img2Ffu.Writer
             BlockPayloads = BlockPayloadsGenerator.GetGPTPayloads(BlockPayloads, InputStream, BlockSize, InputForStore.IsFixedDiskLength);
 
             Logging.Log("Generating write descriptors...");
-            byte[] WriteDescriptorBuffer = GetWriteDescriptorsBuffer(BlockPayloads, FlashUpdateVersion);
+            Memory<byte> WriteDescriptorBuffer = GetWriteDescriptorsBuffer(BlockPayloads, FlashUpdateVersion);
 
             Logging.Log("Generating store header...");
             StoreHeader store = new()
@@ -133,7 +133,7 @@ namespace Img2Ffu.Writer
                 StorePayloadSize = (ulong)BlockPayloads.LongLength * BlockSize
             };
 
-            byte[] StoreHeaderBuffer = store.GetResultingBuffer(FlashUpdateVersion, FlashUpdateType.Full, CompressionAlgorithm.None);
+            Memory<byte> StoreHeaderBuffer = store.GetResultingBuffer(FlashUpdateVersion, FlashUpdateType.Full, CompressionAlgorithm.None);
 
             uint MinSectorCount = (uint)(InputStream.Length / SectorSize);
 
