@@ -90,8 +90,8 @@ namespace Img2Ffu.Writer
 
             using (Process process = new())
             {
-                string programFileName = secureBootSigningCommand.Split(" ")[0];
-                string programArguments = (string.Concat(secureBootSigningCommand.AsSpan(programFileName.Length), string.Format("\"{0}\"", catalog))).Trim();
+                string programFileName = secureBootSigningCommand.Split(' ')[0];
+                string programArguments = $"{secureBootSigningCommand.AsSpan(programFileName.Length)} \"{catalog}\"".Trim();
 
                 process.StartInfo.FileName = programFileName;
                 process.StartInfo.Arguments = programArguments;
