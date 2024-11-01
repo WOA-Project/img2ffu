@@ -239,6 +239,7 @@ namespace Img2Ffu
                         o.OperatingSystemVersion,
                         o.FlashUpdateVersion,
                         deviceTargetingInformations,
+                        o.SecureBootSigningCommand,
                         logging);
                 }
                 catch (Exception ex)

@@ -75,6 +75,7 @@ namespace Img2Ffu.Writer
             string OperatingSystemVersion,
             FlashUpdateVersion FlashUpdateVersion,
             List<DeviceTargetInfo> deviceTargetingInformationArray,
+            string SecureBootSigningCommand,
             ILogging Logging)
         {
             if (File.Exists(FFUFile))
@@ -253,7 +254,13 @@ namespace Img2Ffu.Writer
             Span<byte> HashTable = GenerateHashTable(FFUMetadataHeaderStream, BlockPayloads, BlockSize);
 
             Logging.Log("Generating image catalog...");
-            Span<byte> CatalogBuffer = CatalogFactory.GenerateCatalogFile(HashTable);
+            byte[] CatalogBuffer = CatalogFactory.GenerateCatalogFile(HashTable);
+
+            if (!string.IsNullOrEmpty(SecureBootSigningCommand))
+            {
+                Logging.Log("Signing image catalog...");
+                CatalogBuffer = CatalogFactory.SignCatalogFile(CatalogBuffer, SecureBootSigningCommand);
+            }
 
             Logging.Log("Generating Security Header...");
             SecurityHeader security = new()
