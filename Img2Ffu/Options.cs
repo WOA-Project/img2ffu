@@ -69,7 +69,7 @@ namespace Img2Ffu
             get; set;
         }
 
-        [Option('b', "secure-boot-signing-command", HelpText = "Optional command to sign the resulting FFU file to work in Secure Boot scenarios. The File to sign is passed as a path appended after the provided command string, and is the sole and only argument provided.", Default = "", Required = false)]
+        [Option('t', "secure-boot-signing-command", HelpText = "Optional command to sign the resulting FFU file to work in Secure Boot scenarios. The File to sign is passed as a path appended after the provided command string, and is the sole and only argument provided.", Default = "", Required = false)]
         public required string SecureBootSigningCommand
         {
             get; set;
