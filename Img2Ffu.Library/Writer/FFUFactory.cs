@@ -127,7 +127,7 @@ namespace Img2Ffu.Writer
                 List<GPT.Partition> partitions,
                 Memory<byte> StoreHeaderBuffer,
                 Memory<byte> WriteDescriptorBuffer,
-                KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads,
+                List<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads,
                 VirtualDisk? InputDisk
             )> StoreGenerationParameters = [];
 
@@ -148,7 +148,7 @@ namespace Img2Ffu.Writer
                     List<GPT.Partition> partitions,
                     Memory<byte> StoreHeaderBuffer,
                     Memory<byte> WriteDescriptorBuffer,
-                    KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads,
+                    List<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads,
                     VirtualDisk? InputDisk
                 ) GeneratedStoreParameters = StoreFactory.GenerateStore(
                     inputForStore,
@@ -227,7 +227,7 @@ namespace Img2Ffu.Writer
                 List<GPT.Partition> _,
                 Memory<byte> StoreHeaderBuffer,
                 Memory<byte> WriteDescriptorBuffer,
-                KeyValuePair<ByteArrayKey, BlockPayload>[] _,
+                List<KeyValuePair<ByteArrayKey, BlockPayload>> _,
                 VirtualDisk? _
             ) in StoreGenerationParameters)
             {

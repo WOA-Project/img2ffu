@@ -19,7 +19,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-using static Img2Ffu.GPT;
 
 namespace Img2Ffu.Writer
 {
@@ -30,7 +29,7 @@ namespace Img2Ffu.Writer
             byte[] GPTBuffer = new byte[BlockSize];
             _ = stream.Read(GPTBuffer);
 
-            uint requiredGPTBufferSize = GetGPTSize(GPTBuffer, sectorSize);
+            uint requiredGPTBufferSize = Img2Ffu.GPT.GetGPTSize(GPTBuffer, sectorSize);
             if (BlockSize < requiredGPTBufferSize)
             {
                 string errorMessage = $"The Block size is too small to contain the GPT, the GPT is {requiredGPTBufferSize} bytes long, the Block size is {BlockSize} bytes long";
@@ -42,9 +41,11 @@ namespace Img2Ffu.Writer
 
             GPT GPT = new(GPTBuffer, sectorSize);
 
-            if (BlockSize > requiredGPTBufferSize && GPT.Partitions.OrderBy(x => x.FirstSector).Any(x => x.FirstSector < sectorsInABlock))
+            IOrderedEnumerable<GPT.Partition> orderedGPTPartitions = GPT.Partitions.OrderBy(x => x.FirstSector);
+
+            if (BlockSize > requiredGPTBufferSize && orderedGPTPartitions.Any(x => x.FirstSector < sectorsInABlock))
             {
-                Partition conflictingPartition = GPT.Partitions.OrderBy(x => x.FirstSector).First(x => x.FirstSector < sectorsInABlock);
+                GPT.Partition conflictingPartition = orderedGPTPartitions.First(x => x.FirstSector < sectorsInABlock);
 
                 string errorMessage = $"The Block size is too big to contain only the GPT, the GPT is {requiredGPTBufferSize} bytes long, the Block size is {BlockSize} bytes long. The overlapping partition is {conflictingPartition.Name} at {conflictingPartition.FirstSector * sectorSize}";
                 Logging.Log(errorMessage, ILoggingLevel.Error);
@@ -54,7 +55,7 @@ namespace Img2Ffu.Writer
             return GPT;
         }
 
-        internal static (FlashPart[], List<Partition> partitions) GetImageSlices(Stream stream, uint BlockSize, string[] ExcludedPartitionNames, uint sectorSize, ILogging Logging)
+        internal static (FlashPart[], List<GPT.Partition> partitions) GetImageSlices(Stream stream, uint BlockSize, string[] ExcludedPartitionNames, uint sectorSize, ILogging Logging)
         {
             GPT GPT = GetGPT(stream, BlockSize, sectorSize, Logging);
             uint sectorsInABlock = BlockSize / sectorSize;

@@ -27,7 +27,7 @@ namespace Img2Ffu.Writer.Flashing
 {
     internal static class BlockPayloadsGenerator
     {
-        internal static KeyValuePair<ByteArrayKey, BlockPayload>[] GetGPTPayloads(KeyValuePair<ByteArrayKey, BlockPayload>[] blockPayloads, Stream stream, uint BlockSize, bool IsFixedDiskLength)
+        internal static List<KeyValuePair<ByteArrayKey, BlockPayload>> GetGPTPayloads(List<KeyValuePair<ByteArrayKey, BlockPayload>> blockPayloads, Stream stream, uint BlockSize, bool IsFixedDiskLength)
         {
             List<KeyValuePair<ByteArrayKey, BlockPayload>> blockPayloadsList = [.. blockPayloads];
 
@@ -148,7 +148,22 @@ namespace Img2Ffu.Writer.Flashing
                 ulong endGPTChunkStartLocation = (ulong)stream.Length - BlockSize;
                 byte[] SecondaryGPTBuffer = new byte[(int)BlockSize];
                 _ = stream.Seek((long)endGPTChunkStartLocation, SeekOrigin.Begin);
-                _ = stream.Read(SecondaryGPTBuffer);
+
+                try
+                {
+                    _ = stream.Read(SecondaryGPTBuffer);
+                }
+                catch (EndOfStreamException)
+                {
+                    // For some reason there is a bug with DiscUtils itself that can cause this exception to get thrown
+                    // Simply ignore it and replace the payload with a whole lot of nothing.
+                    SecondaryGPTBuffer = new byte[BlockSize];
+                }
+                catch
+                {
+                    throw;
+                }
+
 
                 MemoryStream secondaryGPTStream = new(SecondaryGPTBuffer);
 
@@ -175,20 +190,21 @@ namespace Img2Ffu.Writer.Flashing
                 )));
             }
 
-            return [.. blockPayloadsList];
+            return blockPayloadsList;
         }
 
-        internal static KeyValuePair<ByteArrayKey, BlockPayload>[] GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, uint BlankSectorBufferSize, ILogging Logging)
+        internal static List<KeyValuePair<ByteArrayKey, BlockPayload>> GetOptimizedPayloads(FlashPart[] flashParts, uint BlockSize, uint BlankSectorBufferSize, ILogging Logging)
         {
             List<KeyValuePair<ByteArrayKey, BlockPayload>> hashedBlocks = [];
 
             if (flashParts == null)
             {
-                return [.. hashedBlocks];
+                return hashedBlocks;
             }
 
             ulong CurrentBlockCount = 0;
             ulong TotalBlockCount = 0;
+
             foreach (FlashPart flashPart in flashParts)
             {
                 TotalBlockCount += (ulong)flashPart.Stream.Length / BlockSize;
@@ -207,79 +223,93 @@ namespace Img2Ffu.Writer.Flashing
             List<KeyValuePair<ByteArrayKey, BlockPayload>> blankBlocks = [];
 
             Memory<byte> blockBuffer = new byte[BlockSize];
-            Span<byte> span = blockBuffer.Span;
+            Span<byte> FFUBlockPayload = blockBuffer.Span;
 
             foreach (FlashPart flashPart in flashParts)
             {
                 _ = flashPart.Stream.Seek(0, SeekOrigin.Begin);
-                long totalBlockCount = flashPart.Stream.Length / BlockSize;
 
-                for (uint blockIndex = 0; blockIndex < totalBlockCount; blockIndex++)
+                ulong streamLength = (ulong)flashPart.Stream.Length;
+                ulong totalBlockCount = streamLength / BlockSize;
+
+                for (ulong blockIndex = 0; blockIndex < totalBlockCount; blockIndex++)
                 {
-                    long streamPosition = flashPart.Stream.Position;
-                    _ = flashPart.Stream.Read(span);
-                    byte[] blockHash = SHA256.HashData(span);
+                    ulong streamPosition = (ulong)flashPart.Stream.Position;
 
-                    if (!StructuralComparisons.StructuralEqualityComparer.Equals(EMPTY_BLOCK_HASH, blockHash))
+                    try
                     {
-                        hashedBlocks.Add(new KeyValuePair<ByteArrayKey, BlockPayload>(new ByteArrayKey(blockHash), new BlockPayload(
-                            new WriteDescriptor()
-                            {
-                                BlockDataEntry = new BlockDataEntry()
-                                {
-                                    BlockCount = 1,
-                                    LocationCount = 1
-                                },
-                                DiskLocations =
-                                [
-                                    new DiskLocation()
-                                    {
-                                        BlockIndex = (uint)((flashPart.StartLocation / BlockSize) + blockIndex),
-                                        DiskAccessMethod = 0
-                                    }
-                                ]
-                            },
-                            flashPart.Stream,
-                            (ulong)streamPosition
-                        )));
+                        _ = flashPart.Stream.Read(FFUBlockPayload);
+                    }
+                    catch (EndOfStreamException)
+                    {
+                        // For some reason there is a bug with DiscUtils itself that can cause this exception to get thrown
+                        // Simply ignore it and replace the payload with a whole lot of nothing.
+                        blockBuffer = new byte[BlockSize];
+                        FFUBlockPayload = blockBuffer.Span;
+                    }
+                    catch
+                    {
+                        throw;
+                    }
 
-                        if (blankPayloadPhase && blankPayloadCount < BlankSectorBufferSize)
+                    byte[] FFUBlockHash = SHA256.HashData(FFUBlockPayload);
+
+                    if (!StructuralComparisons.StructuralEqualityComparer.Equals(EMPTY_BLOCK_HASH, FFUBlockHash) ||
+                        blankPayloadCount < BlankSectorBufferSize)
+                    {
+                        ulong FFUBlockIndex = (flashPart.StartLocation / BlockSize) + blockIndex;
+
+                        if (FFUBlockIndex > uint.MaxValue)
                         {
-                            foreach (KeyValuePair<ByteArrayKey, BlockPayload> blankPayload in blankBlocks)
-                            {
-                                hashedBlocks.Add(blankPayload);
-                            }
+                            throw new NotSupportedException("The image requires more block than the FFU format can support.");
                         }
 
-                        blankPayloadPhase = false;
-                        blankPayloadCount = 0;
-                        blankBlocks.Clear();
-                    }
-                    else if (blankPayloadCount < BlankSectorBufferSize)
-                    {
-                        blankPayloadPhase = true;
-                        blankPayloadCount++;
-
-                        blankBlocks.Add(new KeyValuePair<ByteArrayKey, BlockPayload>(new ByteArrayKey(blockHash), new BlockPayload(
-                            new WriteDescriptor()
-                            {
-                                BlockDataEntry = new BlockDataEntry()
+                        KeyValuePair<ByteArrayKey, BlockPayload> blockDataKeyPair = new(
+                            new ByteArrayKey(FFUBlockHash),
+                            new BlockPayload(
+                                new WriteDescriptor()
                                 {
-                                    BlockCount = 1,
-                                    LocationCount = 1
-                                },
-                                DiskLocations =
-                                [
-                                    new DiskLocation()
+                                    BlockDataEntry = new BlockDataEntry()
                                     {
-                                        BlockIndex = (uint)((flashPart.StartLocation / BlockSize) + blockIndex),
+                                        BlockCount = 1,
+                                        LocationCount = 1
+                                    },
+                                    DiskLocations =
+                                    [
+                                        new DiskLocation()
+                                    {
+                                        BlockIndex = (uint)FFUBlockIndex,
                                         DiskAccessMethod = 0
                                     }
-                                ]
-                            },
-                            flashPart.Stream,
-                            (ulong)streamPosition
-                        )));
+                                    ]
+                                },
+                                flashPart.Stream,
+                                streamPosition
+                            ));
+
+                        if (!StructuralComparisons.StructuralEqualityComparer.Equals(EMPTY_BLOCK_HASH, FFUBlockHash))
+                        {
+                            hashedBlocks.Add(blockDataKeyPair);
+
+                            if (blankPayloadPhase && blankPayloadCount < BlankSectorBufferSize)
+                            {
+                                foreach (KeyValuePair<ByteArrayKey, BlockPayload> blankPayload in blankBlocks)
+                                {
+                                    hashedBlocks.Add(blankPayload);
+                                }
+                            }
+
+                            blankPayloadPhase = false;
+                            blankPayloadCount = 0;
+                            blankBlocks.Clear();
+                        }
+                        else if (blankPayloadCount < BlankSectorBufferSize)
+                        {
+                            blankPayloadPhase = true;
+                            blankPayloadCount++;
+
+                            blankBlocks.Add(blockDataKeyPair);
+                        }
                     }
                     else if (blankPayloadCount >= BlankSectorBufferSize && blankBlocks.Count > 0)
                     {
@@ -299,7 +329,7 @@ namespace Img2Ffu.Writer.Flashing
             Logging.Log("");
             Logging.Log($"FFU Block Count: {hashedBlocks.Count} - {hashedBlocks.Count * BlockSize / (1024 * 1024 * 1024)}GB");
 
-            return [.. hashedBlocks];
+            return hashedBlocks;
         }
     }
 }
