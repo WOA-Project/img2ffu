@@ -28,7 +28,7 @@ namespace Img2Ffu.Writer
 {
     internal static class StoreFactory
     {
-        private static Memory<byte> GetWriteDescriptorsBuffer(KeyValuePair<ByteArrayKey, BlockPayload>[] payloads, FlashUpdateVersion storeHeaderVersion)
+        private static Memory<byte> GetWriteDescriptorsBuffer(List<KeyValuePair<ByteArrayKey, BlockPayload>> payloads, FlashUpdateVersion storeHeaderVersion)
         {
             using MemoryStream WriteDescriptorsStream = new();
             using BinaryWriter binaryWriter = new(WriteDescriptorsStream);
@@ -51,7 +51,7 @@ namespace Img2Ffu.Writer
             Stream InputStream;
             VirtualDisk? InputDisk = null;
 
-            if (InputFile.Contains(@"\\.\physicaldrive", StringComparison.CurrentCultureIgnoreCase))
+            if (InputFile.Contains(@"\\.\PhysicalDrive", StringComparison.CurrentCultureIgnoreCase))
             {
                 InputStream = new DeviceStream(InputFile, FileAccess.Read);
             }
@@ -87,7 +87,7 @@ namespace Img2Ffu.Writer
             List<GPT.Partition> partitions,
             Memory<byte> StoreHeaderBuffer,
             Memory<byte> WriteDescriptorBuffer,
-            KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads,
+            List<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads,
             VirtualDisk? InputDisk
         ) GenerateStore(
             InputForStore InputForStore,
@@ -102,6 +102,8 @@ namespace Img2Ffu.Writer
             Logging.Log("Opening input file...");
             (Stream InputStream, VirtualDisk? InputDisk) = OpenInput(InputForStore.InputFile, Logging);
 
+            Logging.Log($"Store Length: {InputStream.Length}");
+
             Logging.Log("Generating Image Slices...");
             (FlashPart[] flashParts, List<GPT.Partition> partitions) = ImageSplitter.GetImageSlices(InputStream,
                                                                                                     BlockSize,
@@ -110,7 +112,7 @@ namespace Img2Ffu.Writer
                                                                                                     Logging);
 
             Logging.Log("Generating Block Payloads...");
-            KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts,
+            List<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads = BlockPayloadsGenerator.GetOptimizedPayloads(flashParts,
                                                                                                                    BlockSize,
                                                                                                                    InputForStore.MaximumNumberOfBlankBlocksAllowed,
                                                                                                                    Logging);
@@ -123,14 +125,14 @@ namespace Img2Ffu.Writer
             Logging.Log("Generating store header...");
             StoreHeader store = new()
             {
-                WriteDescriptorCount = (uint)BlockPayloads.LongLength,
+                WriteDescriptorCount = (uint)BlockPayloads.LongCount(),
                 WriteDescriptorLength = (uint)WriteDescriptorBuffer.Length,
                 PlatformIds = PlatformIDs.ToArray(),
                 BlockSize = BlockSize,
                 NumberOfStores = NumberOfStores,
                 StoreIndex = StoreIndex,
                 DevicePath = InputForStore.DevicePath,
-                StorePayloadSize = (ulong)BlockPayloads.LongLength * BlockSize
+                StorePayloadSize = (ulong)BlockPayloads.LongCount() * BlockSize
             };
 
             Memory<byte> StoreHeaderBuffer = store.GetResultingBuffer(FlashUpdateVersion, FlashUpdateType.Full, CompressionAlgorithm.None);

@@ -75,6 +75,7 @@ namespace Img2Ffu.Writer
             string OperatingSystemVersion,
             FlashUpdateVersion FlashUpdateVersion,
             List<DeviceTargetInfo> deviceTargetingInformationArray,
+            string SecureBootSigningCommand,
             ILogging Logging)
         {
             if (File.Exists(FFUFile))
@@ -126,7 +127,7 @@ namespace Img2Ffu.Writer
                 List<GPT.Partition> partitions,
                 Memory<byte> StoreHeaderBuffer,
                 Memory<byte> WriteDescriptorBuffer,
-                KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads,
+                List<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads,
                 VirtualDisk? InputDisk
             )> StoreGenerationParameters = [];
 
@@ -147,7 +148,7 @@ namespace Img2Ffu.Writer
                     List<GPT.Partition> partitions,
                     Memory<byte> StoreHeaderBuffer,
                     Memory<byte> WriteDescriptorBuffer,
-                    KeyValuePair<ByteArrayKey, BlockPayload>[] BlockPayloads,
+                    List<KeyValuePair<ByteArrayKey, BlockPayload>> BlockPayloads,
                     VirtualDisk? InputDisk
                 ) GeneratedStoreParameters = StoreFactory.GenerateStore(
                     inputForStore,
@@ -226,7 +227,7 @@ namespace Img2Ffu.Writer
                 List<GPT.Partition> _,
                 Memory<byte> StoreHeaderBuffer,
                 Memory<byte> WriteDescriptorBuffer,
-                KeyValuePair<ByteArrayKey, BlockPayload>[] _,
+                List<KeyValuePair<ByteArrayKey, BlockPayload>> _,
                 VirtualDisk? _
             ) in StoreGenerationParameters)
             {
@@ -253,7 +254,13 @@ namespace Img2Ffu.Writer
             Span<byte> HashTable = GenerateHashTable(FFUMetadataHeaderStream, BlockPayloads, BlockSize);
 
             Logging.Log("Generating image catalog...");
-            Span<byte> CatalogBuffer = CatalogFactory.GenerateCatalogFile(HashTable);
+            byte[] CatalogBuffer = CatalogFactory.GenerateCatalogFile(HashTable);
+
+            if (!string.IsNullOrEmpty(SecureBootSigningCommand))
+            {
+                Logging.Log("Signing image catalog...");
+                CatalogBuffer = CatalogFactory.SignCatalogFile(CatalogBuffer, SecureBootSigningCommand);
+            }
 
             Logging.Log("Generating Security Header...");
             SecurityHeader security = new()
